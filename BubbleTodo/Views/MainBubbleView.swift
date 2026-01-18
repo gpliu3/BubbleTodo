@@ -317,11 +317,12 @@ struct BubbleLayoutView: View {
     }
 
     private func bubbleDiameter(for task: TaskItem) -> CGFloat {
-        let baseSize: CGFloat = 70
-        let scaleFactor: CGFloat = 12
-        // Size is based on effort
+        // Match BubbleView calculation: sqrt-scaled effort
+        // 1min → ~70pt, 5min → ~82pt, 15min → ~97pt, 30min → ~111pt, 60min → ~132pt, 120min → ~160pt
+        let baseSize: CGFloat = 62
+        let scaleFactor: CGFloat = 9
         let size = baseSize + CGFloat(task.bubbleSize) * scaleFactor
-        return min(max(size, 70), 160)
+        return min(max(size, 65), 165)
     }
 
     private func calculateBubblePositions() -> [CGPoint] {

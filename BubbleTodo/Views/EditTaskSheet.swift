@@ -93,39 +93,29 @@ struct EditTaskSheet: View {
                     Text("Priority")
                 }
 
-                // Effort Section
+                // Effort Section (Time-based)
                 Section {
-                    HStack {
-                        Text("Effort")
-                        Spacer()
-                        Text(String(format: "%.1f", effort))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Slider(value: $effort, in: 0.5...10.0, step: 0.5) {
-                        Text("Effort")
-                    }
-
-                    // Quick effort buttons
-                    HStack(spacing: 12) {
-                        ForEach([1.0, 2.0, 3.0, 5.0, 8.0], id: \.self) { value in
+                    // Time effort buttons
+                    HStack(spacing: 8) {
+                        ForEach(TaskItem.effortOptions, id: \.value) { option in
                             Button {
-                                effort = value
+                                effort = option.value
                             } label: {
-                                Text(String(format: "%.0f", value))
+                                Text(option.label)
                                     .font(.caption.weight(.medium))
-                                    .frame(width: 36, height: 28)
-                                    .background(effort == value ? Color.blue : Color.gray.opacity(0.2))
-                                    .foregroundColor(effort == value ? .white : .primary)
-                                    .cornerRadius(6)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
+                                    .foregroundColor(effort == option.value ? .white : .primary)
+                                    .cornerRadius(8)
                             }
                             .buttonStyle(.plain)
                         }
                     }
                 } header: {
-                    Text("Effort (Weight)")
+                    Text("Time Needed")
                 } footer: {
-                    Text("Track how much work this task requires")
+                    Text("Estimated time to complete this task")
                 }
 
                 // Due Date Section

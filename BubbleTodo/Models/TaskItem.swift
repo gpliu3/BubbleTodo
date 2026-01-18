@@ -118,10 +118,35 @@ final class TaskItem {
         return currentWeight
     }
 
-    /// Bubble size is based on EFFORT (not priority)
+    /// Bubble size is based on EFFORT with sqrt scaling
+    /// This ensures 120min tasks aren't 120x bigger than 1min tasks
+    /// Scale: 1min → ~1, 5min → ~2.2, 15min → ~3.9, 30min → ~5.5, 60min → ~7.7, 120min → ~11
     var bubbleSize: Double {
-        effort
+        sqrt(effort)
     }
+
+    /// Effort displayed as time label
+    var effortLabel: String {
+        switch Int(effort) {
+        case 0...1: return "1m"
+        case 2...5: return "5m"
+        case 6...15: return "15m"
+        case 16...30: return "30m"
+        case 31...60: return "1h"
+        case 61...120: return "2h"
+        default: return "\(Int(effort))m"
+        }
+    }
+
+    /// Standard effort options in minutes
+    static let effortOptions: [(value: Double, label: String)] = [
+        (1, "1 min"),
+        (5, "5 min"),
+        (15, "15 min"),
+        (30, "30 min"),
+        (60, "1 hour"),
+        (120, "2 hours")
+    ]
 
     /// Sort score for ordering (higher = more urgent, appears at top)
     /// Combines priority with time-based urgency

@@ -163,6 +163,20 @@ struct CompletedTasksView: View {
         }
     }
 
+    /// Format total minutes as hours and minutes
+    private func formatTotalTime(_ minutes: Double) -> String {
+        let totalMins = Int(minutes)
+        if totalMins >= 60 {
+            let hours = totalMins / 60
+            let mins = totalMins % 60
+            if mins == 0 {
+                return "\(hours)h"
+            }
+            return "\(hours)h \(mins)m"
+        }
+        return "\(totalMins)m"
+    }
+
     private var statsCard: some View {
         VStack(spacing: 16) {
             HStack(spacing: 20) {
@@ -174,16 +188,16 @@ struct CompletedTasksView: View {
                 )
 
                 StatBox(
-                    title: "Total Effort",
-                    value: String(format: "%.1f", totalEffort),
-                    icon: "flame.fill",
+                    title: "Total Time",
+                    value: formatTotalTime(totalEffort),
+                    icon: "clock.fill",
                     color: .orange
                 )
             }
 
             if !filteredTasks.isEmpty {
-                let avgEffort = totalEffort / Double(filteredTasks.count)
-                Text("Average effort per task: \(String(format: "%.1f", avgEffort))")
+                let avgMinutes = totalEffort / Double(filteredTasks.count)
+                Text("Average time per task: \(formatTotalTime(avgMinutes))")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -313,8 +327,8 @@ struct CompletedTaskRow: View {
 
             Spacer()
 
-            // Effort badge
-            Text(String(format: "%.1f", task.effort))
+            // Time effort badge
+            Text(task.effortLabel)
                 .font(.caption.weight(.medium))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)

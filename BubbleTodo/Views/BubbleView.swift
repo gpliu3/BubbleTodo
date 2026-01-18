@@ -13,12 +13,13 @@ struct BubbleView: View {
     @State private var isPopping = false
     @State private var bobOffset: CGFloat = 0
 
-    // Calculate bubble diameter based on task's bubble size
+    // Calculate bubble diameter based on task's bubble size (sqrt-scaled effort)
+    // 1min → ~70pt, 5min → ~87pt, 15min → ~107pt, 30min → ~125pt, 60min → ~145pt, 120min → ~160pt
     private var diameter: CGFloat {
-        let baseSize: CGFloat = 60
-        let scaleFactor: CGFloat = 15
+        let baseSize: CGFloat = 62
+        let scaleFactor: CGFloat = 9
         let size = baseSize + CGFloat(task.bubbleSize) * scaleFactor
-        return min(max(size, 60), 180) // Clamp between 60-180
+        return min(max(size, 65), 165)
     }
 
     private var bubbleColor: Color {
@@ -66,14 +67,27 @@ struct BubbleView: View {
                 .frame(width: diameter * 0.4, height: diameter * 0.4)
                 .offset(x: -diameter * 0.2, y: -diameter * 0.2)
 
-            // Task title
-            Text(task.title)
-                .font(.system(size: min(diameter / 5, 16), weight: .medium))
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .padding(8)
-                .frame(width: diameter - 16)
+            // Content: Title and time
+            VStack(spacing: 2) {
+                // Task title
+                Text(task.title)
+                    .font(.system(size: min(diameter / 5.5, 15), weight: .medium))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(width: diameter - 20)
+
+                // Time label
+                Text(task.effortLabel)
+                    .font(.system(size: min(diameter / 7, 11), weight: .semibold))
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.2))
+                    )
+            }
         }
         .offset(y: bobOffset)
         .scaleEffect(isPopping ? 1.3 : 1.0)
@@ -121,7 +135,10 @@ struct BubbleView: View {
 }
 
 #Preview {
-    let task = TaskItem(title: "Test Task", priority: 3)
-    return BubbleView(task: task, onTap: {}, onLongPress: {})
-        .padding()
+    HStack(spacing: 20) {
+        BubbleView(task: TaskItem(title: "Quick", priority: 1, effort: 1), onTap: {}, onLongPress: {})
+        BubbleView(task: TaskItem(title: "Medium task", priority: 3, effort: 30), onTap: {}, onLongPress: {})
+        BubbleView(task: TaskItem(title: "Big project", priority: 5, effort: 120), onTap: {}, onLongPress: {})
+    }
+    .padding()
 }
