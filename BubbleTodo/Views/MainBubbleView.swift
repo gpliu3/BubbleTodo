@@ -5,16 +5,18 @@
 
 import SwiftUI
 import SwiftData
+internal import Combine
 
 struct MainBubbleView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted },
            sort: \TaskItem.createdAt)
-    private var tasks: [TaskItem]
+    private var allTasks: [TaskItem]
 
     @State private var showingAddSheet = false
     @State private var selectedTask: TaskItem?
     @State private var showingEditSheet = false
+    @State private var currentTime = Date()
 
     // Undo state
     @State private var recentlyCompletedTask: TaskItem?
@@ -22,25 +24,47 @@ struct MainBubbleView: View {
     @State private var showUndoToast = false
     @State private var undoTimer: Timer?
 
-    // Sort tasks by bubble size (biggest first - they float to top)
+    // Timer for updating time-based positioning
+    let timeUpdateTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    // Filter tasks to only show those due today, overdue, or without due date
+    private var todayTasks: [TaskItem] {
+        allTasks.filter { $0.shouldShowToday }
+    }
+
+    // Sort tasks by priority/urgency (highest sortScore first = top)
     private var sortedTasks: [TaskItem] {
-        tasks.sorted { $0.bubbleSize > $1.bubbleSize }
+        todayTasks.sorted { $0.sortScore > $1.sortScore }
+    }
+
+    // Day progress: 0.0 at 6 AM, 1.0 at 10 PM
+    private var dayProgress: Double {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: currentTime)
+        let minute = calendar.component(.minute, from: currentTime)
+
+        let currentMinutes = Double(hour * 60 + minute)
+        let startMinutes: Double = 6 * 60  // 6 AM
+        let endMinutes: Double = 22 * 60   // 10 PM
+
+        let progress = (currentMinutes - startMinutes) / (endMinutes - startMinutes)
+        return min(max(progress, 0), 1)
     }
 
     var body: some View {
         ZStack {
-            // Background gradient
+            // Background gradient - changes with time of day
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color(.systemBackground),
-                    Color(.systemGray6)
+                    dayProgress > 0.7 ? Color.orange.opacity(0.1) : Color(.systemGray6)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
 
-            if tasks.isEmpty {
+            if todayTasks.isEmpty {
                 emptyStateView
             } else {
                 bubbleGridView
@@ -75,6 +99,12 @@ struct MainBubbleView: View {
         }
         .navigationTitle("Bubbles")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                // Show day progress indicator
+                DayProgressIndicator(progress: dayProgress)
+            }
+        }
         .sheet(isPresented: $showingAddSheet) {
             AddTaskSheet()
         }
@@ -82,6 +112,9 @@ struct MainBubbleView: View {
             if let task = selectedTask {
                 EditTaskSheet(task: task)
             }
+        }
+        .onReceive(timeUpdateTimer) { _ in
+            currentTime = Date()
         }
     }
 
@@ -91,11 +124,11 @@ struct MainBubbleView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
 
-            Text("No tasks yet!")
+            Text("All clear for today!")
                 .font(.title2)
                 .foregroundColor(.secondary)
 
-            Text("Tap + to add your first bubble")
+            Text("Tap + to add a new task")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -107,6 +140,8 @@ struct MainBubbleView: View {
                 BubbleLayoutView(
                     tasks: sortedTasks,
                     containerWidth: geometry.size.width,
+                    containerHeight: geometry.size.height,
+                    dayProgress: dayProgress,
                     onTap: { task in
                         completeTask(task)
                     },
@@ -115,7 +150,6 @@ struct MainBubbleView: View {
                         showingEditSheet = true
                     }
                 )
-                .padding(.top, 20)
                 .padding(.bottom, 100) // Space for add button
             }
         }
@@ -193,6 +227,24 @@ struct MainBubbleView: View {
     }
 }
 
+// MARK: - Day Progress Indicator
+
+struct DayProgressIndicator: View {
+    let progress: Double
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: progress < 0.5 ? "sun.rise.fill" : "sun.max.fill")
+                .foregroundColor(progress > 0.7 ? .orange : .yellow)
+                .font(.caption)
+
+            Text("\(Int(progress * 100))%")
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
 // MARK: - Undo Toast View
 
 struct UndoToastView: View {
@@ -231,8 +283,18 @@ struct UndoToastView: View {
 struct BubbleLayoutView: View {
     let tasks: [TaskItem]
     let containerWidth: CGFloat
+    let containerHeight: CGFloat
+    let dayProgress: Double
     let onTap: (TaskItem) -> Void
     let onLongPress: (TaskItem) -> Void
+
+    // Morning offset: bubbles start lower, rise throughout the day
+    // At 0% progress (morning): offset = maxOffset (bubbles at bottom)
+    // At 100% progress (evening): offset = 0 (bubbles at top)
+    private var verticalOffset: CGFloat {
+        let maxOffset: CGFloat = max(containerHeight * 0.4, 200)
+        return maxOffset * (1 - dayProgress)
+    }
 
     var body: some View {
         let positions = calculateBubblePositions()
@@ -250,18 +312,21 @@ struct BubbleLayoutView: View {
             }
         }
         .frame(width: containerWidth, height: calculateTotalHeight())
+        .offset(y: verticalOffset)
+        .animation(.easeInOut(duration: 1.0), value: dayProgress)
     }
 
     private func bubbleDiameter(for task: TaskItem) -> CGFloat {
-        let baseSize: CGFloat = 60
-        let scaleFactor: CGFloat = 15
+        let baseSize: CGFloat = 70
+        let scaleFactor: CGFloat = 12
+        // Size is based on effort
         let size = baseSize + CGFloat(task.bubbleSize) * scaleFactor
-        return min(max(size, 60), 180)
+        return min(max(size, 70), 160)
     }
 
     private func calculateBubblePositions() -> [CGPoint] {
         var positions: [CGPoint] = []
-        var currentY: CGFloat = 0
+        var currentY: CGFloat = 20
         var currentRowBubbles: [(task: TaskItem, x: CGFloat, width: CGFloat)] = []
         var currentRowWidth: CGFloat = 0
         let padding: CGFloat = 16
@@ -317,7 +382,7 @@ struct BubbleLayoutView: View {
     }
 
     private func calculateTotalHeight() -> CGFloat {
-        var currentY: CGFloat = 0
+        var currentY: CGFloat = 20
         var currentRowBubbles: [TaskItem] = []
         var currentRowWidth: CGFloat = 0
         let padding: CGFloat = 16
@@ -344,7 +409,7 @@ struct BubbleLayoutView: View {
             currentY += rowHeight
         }
 
-        return currentY + 50 // Extra padding at bottom
+        return currentY + 100 // Extra padding at bottom
     }
 }
 

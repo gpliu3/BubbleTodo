@@ -96,7 +96,7 @@ final class TaskItem {
 
     // MARK: - Computed Properties
 
-    /// Calculates the effective size/urgency of the bubble
+    /// Calculates the effective urgency weight (increases over time)
     var effectiveWeight: Double {
         var currentWeight = weight
         let now = Date()
@@ -118,9 +118,46 @@ final class TaskItem {
         return currentWeight
     }
 
-    /// Base bubble size = priority * weight
+    /// Bubble size is based on EFFORT (not priority)
     var bubbleSize: Double {
+        effort
+    }
+
+    /// Sort score for ordering (higher = more urgent, appears at top)
+    /// Combines priority with time-based urgency
+    var sortScore: Double {
         Double(priority) * effectiveWeight
+    }
+
+    /// Whether this task should be visible today
+    /// Shows: tasks due today, overdue tasks, or tasks without due date
+    var shouldShowToday: Bool {
+        guard !isCompleted else { return false }
+
+        // No due date = always show
+        guard let dueDate = dueDate else { return true }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Show if due today or overdue
+        let startOfToday = calendar.startOfDay(for: now)
+        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
+
+        // Due today (any time today) or overdue (before today)
+        return dueDate < endOfToday
+    }
+
+    /// Check if task is overdue
+    var isOverdue: Bool {
+        guard let dueDate = dueDate else { return false }
+        return Date() > dueDate
+    }
+
+    /// Check if task is due today
+    var isDueToday: Bool {
+        guard let dueDate = dueDate else { return false }
+        return Calendar.current.isDateInToday(dueDate)
     }
 
     /// Priority label for display
@@ -166,30 +203,34 @@ final class TaskItem {
         guard isRecurring, let interval = recurringInterval else { return nil }
 
         let calendar = Calendar.current
-        var nextDueDate: Date? = nil
+        // Use current due date, or today if no due date was set
+        let baseDate = dueDate ?? Date()
+        var nextDueDate: Date
 
-        if let currentDue = dueDate {
-            switch interval {
-            case .daily:
-                nextDueDate = calendar.date(byAdding: .day, value: 1, to: currentDue)
+        switch interval {
+        case .daily:
+            nextDueDate = calendar.date(byAdding: .day, value: 1, to: baseDate) ?? baseDate
 
-            case .weekly:
-                if !weeklyDays.isEmpty {
-                    // Find next occurrence based on selected weekdays
-                    nextDueDate = findNextWeeklyDate(from: currentDue, weekdays: weeklyDays, calendar: calendar)
-                } else {
-                    nextDueDate = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDue)
-                }
+        case .weekly:
+            if !weeklyDays.isEmpty {
+                // Find next occurrence based on selected weekdays
+                nextDueDate = findNextWeeklyDate(from: baseDate, weekdays: weeklyDays, calendar: calendar) ?? baseDate
+            } else if recurringCount > 1 {
+                // X times per week - space evenly (every 7/count days)
+                let dayInterval = max(7 / recurringCount, 1)
+                nextDueDate = calendar.date(byAdding: .day, value: dayInterval, to: baseDate) ?? baseDate
+            } else {
+                nextDueDate = calendar.date(byAdding: .weekOfYear, value: 1, to: baseDate) ?? baseDate
+            }
 
-            case .monthly:
-                // For monthly with count, space them out evenly
-                if recurringCount > 1 {
-                    let daysInMonth = 30 // Approximate
-                    let interval = daysInMonth / recurringCount
-                    nextDueDate = calendar.date(byAdding: .day, value: interval, to: currentDue)
-                } else {
-                    nextDueDate = calendar.date(byAdding: .month, value: 1, to: currentDue)
-                }
+        case .monthly:
+            // For monthly with count, space them out evenly
+            if recurringCount > 1 {
+                let daysInMonth = 30 // Approximate
+                let dayInterval = daysInMonth / recurringCount
+                nextDueDate = calendar.date(byAdding: .day, value: dayInterval, to: baseDate) ?? baseDate
+            } else {
+                nextDueDate = calendar.date(byAdding: .month, value: 1, to: baseDate) ?? baseDate
             }
         }
 
@@ -198,7 +239,7 @@ final class TaskItem {
             priority: priority,
             weight: 1.0, // Reset weight for new recurring task
             effort: effort,
-            dueDate: nextDueDate,
+            dueDate: nextDueDate, // Always has a due date now
             isRecurring: true,
             recurringInterval: interval,
             recurringCount: recurringCount,
