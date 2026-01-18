@@ -6,19 +6,33 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @State private var selectedTab = 0
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                MainBubbleView()
+            }
+            .tabItem {
+                Label("Bubbles", systemImage: "bubble.fill")
+            }
+            .tag(0)
+
+            NavigationStack {
+                CompletedTasksView()
+            }
+            .tabItem {
+                Label("Done", systemImage: "checkmark.circle.fill")
+            }
+            .tag(1)
         }
-        .padding()
     }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: TaskItem.self, inMemory: true)
 }
