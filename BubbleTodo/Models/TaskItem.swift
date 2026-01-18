@@ -10,6 +10,14 @@ enum RecurringInterval: String, Codable, CaseIterable {
     case daily = "Daily"
     case weekly = "Weekly"
     case monthly = "Monthly"
+
+    var displayName: String {
+        switch self {
+        case .daily: return L("recurring.daily")
+        case .weekly: return L("recurring.weekly")
+        case .monthly: return L("recurring.monthly")
+        }
+    }
 }
 
 enum Weekday: Int, Codable, CaseIterable, Identifiable {
@@ -25,25 +33,44 @@ enum Weekday: Int, Codable, CaseIterable, Identifiable {
 
     var shortName: String {
         switch self {
-        case .sunday: return "Sun"
-        case .monday: return "Mon"
-        case .tuesday: return "Tue"
-        case .wednesday: return "Wed"
-        case .thursday: return "Thu"
-        case .friday: return "Fri"
-        case .saturday: return "Sat"
+        case .sunday: return L("weekday.sun.short")
+        case .monday: return L("weekday.mon.short")
+        case .tuesday: return L("weekday.tue.short")
+        case .wednesday: return L("weekday.wed.short")
+        case .thursday: return L("weekday.thu.short")
+        case .friday: return L("weekday.fri.short")
+        case .saturday: return L("weekday.sat.short")
         }
     }
 
     var fullName: String {
         switch self {
-        case .sunday: return "Sunday"
-        case .monday: return "Monday"
-        case .tuesday: return "Tuesday"
-        case .wednesday: return "Wednesday"
-        case .thursday: return "Thursday"
-        case .friday: return "Friday"
-        case .saturday: return "Saturday"
+        case .sunday: return L("weekday.sunday")
+        case .monday: return L("weekday.monday")
+        case .tuesday: return L("weekday.tuesday")
+        case .wednesday: return L("weekday.wednesday")
+        case .thursday: return L("weekday.thursday")
+        case .friday: return L("weekday.friday")
+        case .saturday: return L("weekday.saturday")
+        }
+    }
+}
+
+enum DueDateType: String, Codable, CaseIterable {
+    case on = "On"       // Task only for that specific day
+    case before = "Before"  // Deadline - must be done before/at date
+
+    var displayName: String {
+        switch self {
+        case .on: return L("duedate.on")
+        case .before: return L("duedate.before")
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .on: return L("duedate.on.footer")
+        case .before: return L("duedate.before.footer")
         }
     }
 }
@@ -56,6 +83,7 @@ final class TaskItem {
     var weight: Double = 1.0 // starts at 1.0, increases over time
     var effort: Double = 1.0 // user-input effort/weight for tracking total work done
     var dueDate: Date?
+    var dueDateType: DueDateType? = nil // "On" vs "Before"
     var isRecurring: Bool = false
     var recurringInterval: RecurringInterval?
     var recurringCount: Int = 1 // how many times per period (e.g., 3 times per week)
@@ -71,6 +99,7 @@ final class TaskItem {
         weight: Double = 1.0,
         effort: Double = 1.0,
         dueDate: Date? = nil,
+        dueDateType: DueDateType = .before,
         isRecurring: Bool = false,
         recurringInterval: RecurringInterval? = nil,
         recurringCount: Int = 1,
@@ -85,6 +114,7 @@ final class TaskItem {
         self.weight = weight
         self.effort = effort
         self.dueDate = dueDate
+        self.dueDateType = dueDateType
         self.isRecurring = isRecurring
         self.recurringInterval = recurringInterval
         self.recurringCount = recurringCount
@@ -96,18 +126,38 @@ final class TaskItem {
 
     // MARK: - Computed Properties
 
+    /// Effective due date type with default fallback
+    var effectiveDueDateType: DueDateType {
+        dueDateType ?? .before
+    }
+
     /// Calculates the effective urgency weight (increases over time)
     var effectiveWeight: Double {
         var currentWeight = weight
         let now = Date()
 
-        // If past due date, increase weight by 0.1 every hour
-        if let dueDate = dueDate, now > dueDate {
-            let hoursOverdue = now.timeIntervalSince(dueDate) / 3600
-            currentWeight += hoursOverdue * 0.1
-        }
-        // For non-due items older than 24h, increase by 0.05 every hour
-        else if dueDate == nil {
+        if let dueDate = dueDate {
+            if now > dueDate {
+                // Past due date - increase weight significantly
+                let hoursOverdue = now.timeIntervalSince(dueDate) / 3600
+                currentWeight += hoursOverdue * 0.1
+            } else if effectiveDueDateType == .before {
+                // "Before" type: Gradually increase urgency as approaching deadline
+                let hoursUntilDue = dueDate.timeIntervalSince(now) / 3600
+
+                if hoursUntilDue < 24 {
+                    // Within 24 hours: urgency increases dramatically
+                    let urgencyMultiplier = 1.0 + (24 - hoursUntilDue) / 24 * 0.5
+                    currentWeight *= urgencyMultiplier
+                } else if hoursUntilDue < 72 {
+                    // Within 3 days: moderate urgency increase
+                    let urgencyMultiplier = 1.0 + (72 - hoursUntilDue) / 72 * 0.3
+                    currentWeight *= urgencyMultiplier
+                }
+            }
+            // For "on" type: no early urgency increase
+        } else {
+            // No due date - slight increase for old tasks
             let hoursSinceCreation = now.timeIntervalSince(createdAt) / 3600
             if hoursSinceCreation > 24 {
                 let hoursAfter24 = hoursSinceCreation - 24
@@ -139,14 +189,16 @@ final class TaskItem {
     }
 
     /// Standard effort options in minutes
-    static let effortOptions: [(value: Double, label: String)] = [
-        (1, "1 min"),
-        (5, "5 min"),
-        (15, "15 min"),
-        (30, "30 min"),
-        (60, "1 hour"),
-        (120, "2 hours")
-    ]
+    static var effortOptions: [(value: Double, label: String)] {
+        [
+            (1, L("effort.1min")),
+            (5, L("effort.5min")),
+            (15, L("effort.15min")),
+            (30, L("effort.30min")),
+            (60, L("effort.1hour")),
+            (120, L("effort.2hours"))
+        ]
+    }
 
     /// Sort score for ordering (higher = more urgent, appears at top)
     /// Combines priority with time-based urgency
@@ -155,7 +207,7 @@ final class TaskItem {
     }
 
     /// Whether this task should be visible today
-    /// Shows: tasks due today, overdue tasks, or tasks without due date
+    /// Behavior depends on dueDateType
     var shouldShowToday: Bool {
         guard !isCompleted else { return false }
 
@@ -164,13 +216,32 @@ final class TaskItem {
 
         let calendar = Calendar.current
         let now = Date()
-
-        // Show if due today or overdue
         let startOfToday = calendar.startOfDay(for: now)
         let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
-        // Due today (any time today) or overdue (before today)
-        return dueDate < endOfToday
+        // Recurring tasks always use .on behavior (only show on scheduled day)
+        let typeToUse = isRecurring ? DueDateType.on : effectiveDueDateType
+
+        switch typeToUse {
+        case .on:
+            // "On" type: Only show on the specific day
+            let startOfDueDate = calendar.startOfDay(for: dueDate)
+            let endOfDueDate = calendar.date(byAdding: .day, value: 1, to: startOfDueDate)!
+
+            // Show if today is the due date OR if overdue
+            if now >= startOfDueDate && now < endOfDueDate {
+                return true // Today is the due date
+            } else if now >= endOfDueDate {
+                return true // Overdue
+            } else {
+                return false // Before the due date - don't show
+            }
+
+        case .before:
+            // "Before" type: Show from creation until deadline
+            // Show if deadline hasn't passed
+            return now < dueDate
+        }
     }
 
     /// Check if task is overdue
@@ -188,12 +259,12 @@ final class TaskItem {
     /// Priority label for display
     var priorityLabel: String {
         switch priority {
-        case 1: return "Low"
-        case 2: return "Medium"
-        case 3: return "High"
-        case 4: return "Urgent"
-        case 5: return "Critical"
-        default: return "Medium"
+        case 1: return L("priority.low")
+        case 2: return L("priority.medium")
+        case 3: return L("priority.high")
+        case 4: return L("priority.urgent")
+        case 5: return L("priority.critical")
+        default: return L("priority.medium")
         }
     }
 
@@ -227,44 +298,46 @@ final class TaskItem {
     func createNextRecurringTask() -> TaskItem? {
         guard isRecurring, let interval = recurringInterval else { return nil }
 
-        let calendar = Calendar.current
-        // Use current due date, or today if no due date was set
-        let baseDate = dueDate ?? Date()
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday = 1st day of week
+
+        let now = Date()
         var nextDueDate: Date
 
         switch interval {
         case .daily:
-            nextDueDate = calendar.date(byAdding: .day, value: 1, to: baseDate) ?? baseDate
+            // Next occurrence is tomorrow
+            nextDueDate = calendar.date(byAdding: .day, value: 1, to: now) ?? now
 
         case .weekly:
             if !weeklyDays.isEmpty {
-                // Find next occurrence based on selected weekdays
-                nextDueDate = findNextWeeklyDate(from: baseDate, weekdays: weeklyDays, calendar: calendar) ?? baseDate
+                // Find next occurrence based on selected weekdays (Mon/Wed/Fri)
+                nextDueDate = findNextWeeklyDate(from: now, weekdays: weeklyDays, calendar: calendar) ?? now
             } else if recurringCount > 1 {
-                // X times per week - space evenly (every 7/count days)
-                let dayInterval = max(7 / recurringCount, 1)
-                nextDueDate = calendar.date(byAdding: .day, value: dayInterval, to: baseDate) ?? baseDate
+                // X times per week - find next slot starting from Monday
+                nextDueDate = findNextWeeklySlot(from: now, count: recurringCount, calendar: calendar) ?? now
             } else {
-                nextDueDate = calendar.date(byAdding: .weekOfYear, value: 1, to: baseDate) ?? baseDate
+                // Once per week - next Monday
+                nextDueDate = findNextMonday(from: now, calendar: calendar) ?? now
             }
 
         case .monthly:
-            // For monthly with count, space them out evenly
             if recurringCount > 1 {
-                let daysInMonth = 30 // Approximate
-                let dayInterval = daysInMonth / recurringCount
-                nextDueDate = calendar.date(byAdding: .day, value: dayInterval, to: baseDate) ?? baseDate
+                // X times per month - space evenly from 1st of month
+                nextDueDate = findNextMonthlySlot(from: now, count: recurringCount, calendar: calendar) ?? now
             } else {
-                nextDueDate = calendar.date(byAdding: .month, value: 1, to: baseDate) ?? baseDate
+                // Once per month - 1st of next month
+                nextDueDate = findFirstOfNextMonth(from: now, calendar: calendar) ?? now
             }
         }
 
         return TaskItem(
             title: title,
             priority: priority,
-            weight: 1.0, // Reset weight for new recurring task
+            weight: 1.0,
             effort: effort,
-            dueDate: nextDueDate, // Always has a due date now
+            dueDate: nextDueDate,
+            dueDateType: effectiveDueDateType,
             isRecurring: true,
             recurringInterval: interval,
             recurringCount: recurringCount,
@@ -272,23 +345,89 @@ final class TaskItem {
         )
     }
 
-    /// Finds the next date that matches one of the selected weekdays
+    /// Finds the next date that matches one of the selected weekdays (starting tomorrow)
     private func findNextWeeklyDate(from date: Date, weekdays: [Int], calendar: Calendar) -> Date? {
         var checkDate = date
-        let sortedWeekdays = weekdays.sorted()
 
-        // Look up to 8 days ahead to find the next matching weekday
+        // Convert iOS weekday (1=Sun, 2=Mon) to our weekday (1=Sun, 2=Mon)
+        // weekdays array uses iOS convention where 1=Sun, 2=Mon, etc.
+
         for _ in 1...8 {
             checkDate = calendar.date(byAdding: .day, value: 1, to: checkDate) ?? checkDate
             let weekday = calendar.component(.weekday, from: checkDate)
 
-            if sortedWeekdays.contains(weekday) {
+            if weekdays.contains(weekday) {
                 return checkDate
             }
         }
 
-        // Fallback: just add a week
         return calendar.date(byAdding: .weekOfYear, value: 1, to: date)
+    }
+
+    /// Find next Monday (week start)
+    private func findNextMonday(from date: Date, calendar: Calendar) -> Date? {
+        var checkDate = date
+
+        for _ in 1...8 {
+            checkDate = calendar.date(byAdding: .day, value: 1, to: checkDate) ?? checkDate
+            let weekday = calendar.component(.weekday, from: checkDate)
+
+            if weekday == 2 { // Monday (in iOS calendar: 1=Sun, 2=Mon)
+                return checkDate
+            }
+        }
+
+        return calendar.date(byAdding: .weekOfYear, value: 1, to: date)
+    }
+
+    /// Find next slot for X times per week (space evenly Mon-Sun)
+    private func findNextWeeklySlot(from date: Date, count: Int, calendar: Calendar) -> Date? {
+        let dayInterval = 7 / count // e.g., 3x/week = every 2-3 days
+
+        // Get current day of week (Mon=1, Sun=7)
+        let currentWeekday = calendar.component(.weekday, from: date)
+        let mondayOffset = (2 - currentWeekday + 7) % 7 // Days to Monday
+
+        // If today is not a slot day, find next slot
+        var nextDate = calendar.date(byAdding: .day, value: 1, to: date) ?? date
+
+        // Simple approach: add dayInterval days from today
+        nextDate = calendar.date(byAdding: .day, value: dayInterval, to: date) ?? date
+
+        // If we've gone past Sunday, wrap to next Monday
+        let nextWeekday = calendar.component(.weekday, from: nextDate)
+        if nextWeekday == 1 { // Sunday, wrap to Monday
+            nextDate = calendar.date(byAdding: .day, value: 1, to: nextDate) ?? nextDate
+        }
+
+        return nextDate
+    }
+
+    /// Find 1st of next month
+    private func findFirstOfNextMonth(from date: Date, calendar: Calendar) -> Date? {
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: date) ?? date
+        let components = calendar.dateComponents([.year, .month], from: nextMonth)
+        return calendar.date(from: components)
+    }
+
+    /// Find next slot for X times per month (starting from 1st)
+    private func findNextMonthlySlot(from date: Date, count: Int, calendar: Calendar) -> Date? {
+        let dayInterval = 30 / count // e.g., 3x/month = every ~10 days
+
+        let currentDay = calendar.component(.day, from: date)
+        var nextDate = calendar.date(byAdding: .day, value: dayInterval, to: date) ?? date
+
+        // Check if we've crossed into next month
+        let nextMonth = calendar.component(.month, from: nextDate)
+        let currentMonth = calendar.component(.month, from: date)
+
+        if nextMonth != currentMonth {
+            // Wrap to 1st of next month
+            let components = calendar.dateComponents([.year, .month], from: nextDate)
+            nextDate = calendar.date(from: components) ?? nextDate
+        }
+
+        return nextDate
     }
 
     /// Summary of recurring schedule for display

@@ -1,0 +1,110 @@
+/* Main View */
+"main.title" = "戳破任务！";
+"main.empty.title" = "今天全部完成！";
+"main.empty.subtitle" = "点击 + 添加新任务";
+"main.completed" = "已完成：%@";
+"main.undo" = "撤销";
+
+/* Navigation */
+"nav.bubbles" = "气泡";
+"nav.done" = "已完成";
+"nav.settings" = "设置";
+
+/* Task Form */
+"task.new" = "新建任务";
+"task.edit" = "编辑任务";
+"task.title" = "任务";
+"task.placeholder" = "需要做什么？";
+"task.cancel" = "取消";
+"task.save" = "保存";
+"task.delete" = "删除任务";
+"task.delete.confirm" = "删除此任务？";
+"task.delete.message" = "此操作无法撤销。";
+
+/* Priority */
+"priority.title" = "优先级";
+"priority.low" = "低";
+"priority.medium" = "中";
+"priority.high" = "高";
+"priority.urgent" = "紧急";
+"priority.critical" = "非常紧急";
+"priority.footer" = "高优先级任务显示在顶部";
+
+/* Effort */
+"effort.title" = "所需时间";
+"effort.footer" = "完成此任务的预计时间";
+"effort.1min" = "1 分钟";
+"effort.5min" = "5 分钟";
+"effort.15min" = "15 分钟";
+"effort.30min" = "30 分钟";
+"effort.1hour" = "1 小时";
+"effort.2hours" = "2 小时";
+
+/* Due Date */
+"duedate.title" = "截止日期";
+"duedate.toggle" = "设置截止日期";
+"duedate.on" = "当天";
+"duedate.before" = "之前";
+"duedate.on.footer" = "任务仅在截止日期当天显示";
+"duedate.before.footer" = "任务提前显示，临近截止日期时紧急程度增加";
+"duedate.recurring.disabled" = "循环任务不能设置截止日期";
+
+/* Recurring */
+"recurring.title" = "循环";
+"recurring.toggle" = "循环任务";
+"recurring.repeat" = "重复";
+"recurring.daily" = "每天";
+"recurring.weekly" = "每周";
+"recurring.monthly" = "每月";
+"recurring.footer" = "完成此任务后将创建新任务";
+"recurring.duedate.disabled" = "有截止日期的任务不能循环";
+"recurring.specificdays" = "选择具体日期";
+"recurring.selectdays" = "选择日期";
+"recurring.timesperweek" = "每周 %d 次";
+"recurring.timespermonth" = "每月 %d 次";
+"recurring.everyday" = "每天";
+"recurring.everyweek" = "每周";
+"recurring.everymonth" = "每月";
+
+/* Weekdays */
+"weekday.sun.short" = "周日";
+"weekday.mon.short" = "周一";
+"weekday.tue.short" = "周二";
+"weekday.wed.short" = "周三";
+"weekday.thu.short" = "周四";
+"weekday.fri.short" = "周五";
+"weekday.sat.short" = "周六";
+"weekday.sunday" = "星期日";
+"weekday.monday" = "星期一";
+"weekday.tuesday" = "星期二";
+"weekday.wednesday" = "星期三";
+"weekday.thursday" = "星期四";
+"weekday.friday" = "星期五";
+"weekday.saturday" = "星期六";
+
+/* Task Info */
+"info.title" = "信息";
+"info.created" = "创建时间";
+"info.effort" = "工作量";
+"info.urgency" = "紧急权重";
+
+/* Completed Tasks */
+"completed.title" = "已完成任务";
+"completed.filter.today" = "今天";
+"completed.filter.week" = "本周";
+"completed.filter.month" = "本月";
+"completed.filter.all" = "全部";
+"completed.stats.tasks" = "个任务";
+"completed.stats.time" = "总时长";
+"completed.empty" = "没有已完成的任务";
+"completed.restore" = "恢复";
+
+/* Settings */
+"settings.title" = "设置";
+"settings.language" = "语言";
+"settings.language.system" = "跟随系统";
+"settings.language.english" = "English";
+"settings.language.chinese" = "简体中文";
+"settings.appearance" = "外观";
+"settings.about" = "关于";
+"settings.version" = "版本";

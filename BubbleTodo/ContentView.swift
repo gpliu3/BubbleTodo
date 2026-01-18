@@ -10,6 +10,7 @@ import SwiftData
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -17,7 +18,7 @@ struct ContentView: View {
                 MainBubbleView()
             }
             .tabItem {
-                Label("Bubbles", systemImage: "bubble.fill")
+                Label(L("nav.bubbles"), systemImage: "bubble.fill")
             }
             .tag(0)
 
@@ -25,9 +26,15 @@ struct ContentView: View {
                 CompletedTasksView()
             }
             .tabItem {
-                Label("Done", systemImage: "checkmark.circle.fill")
+                Label(L("nav.done"), systemImage: "checkmark.circle.fill")
             }
             .tag(1)
+
+            SettingsView()
+                .tabItem {
+                    Label(L("nav.settings"), systemImage: "gearshape.fill")
+                }
+                .tag(2)
         }
     }
 }

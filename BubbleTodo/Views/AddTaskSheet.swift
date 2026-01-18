@@ -15,34 +15,38 @@ struct AddTaskSheet: View {
     @State private var effort: Double = 15.0 // Default to 15 minutes
     @State private var hasDueDate = false
     @State private var dueDate = Date()
+    @State private var dueDateType: DueDateType = .before
     @State private var isRecurring = false
     @State private var recurringInterval: RecurringInterval = .daily
     @State private var recurringCount = 1
     @State private var selectedWeekdays: Set<Weekday> = []
     @State private var useSpecificDays = false
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
-    private let priorityOptions = [
-        (value: 1, label: "Low", color: Color.green),
-        (value: 2, label: "Medium", color: Color.yellow),
-        (value: 3, label: "High", color: Color.orange),
-        (value: 4, label: "Urgent", color: Color.red),
-        (value: 5, label: "Critical", color: Color.purple)
-    ]
+    private var priorityOptions: [(value: Int, label: String, color: Color)] {
+        [
+            (value: 1, label: L("priority.low"), color: Color.green),
+            (value: 2, label: L("priority.medium"), color: Color.yellow),
+            (value: 3, label: L("priority.high"), color: Color.orange),
+            (value: 4, label: L("priority.urgent"), color: Color.red),
+            (value: 5, label: L("priority.critical"), color: Color.purple)
+        ]
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 // Title Section
                 Section {
-                    TextField("What needs to be done?", text: $title)
+                    TextField(L("task.placeholder"), text: $title)
                         .font(.body)
                 } header: {
-                    Text("Task")
+                    Text(L("task.title"))
                 }
 
                 // Priority Section
                 Section {
-                    Picker("Priority", selection: $priority) {
+                    Picker(L("priority.title"), selection: $priority) {
                         ForEach(priorityOptions, id: \.value) { option in
                             HStack {
                                 Circle()
@@ -73,9 +77,9 @@ struct AddTaskSheet: View {
                             .foregroundColor(.secondary)
                     }
                 } header: {
-                    Text("Priority")
+                    Text(L("priority.title"))
                 } footer: {
-                    Text("Higher priority tasks appear as larger bubbles")
+                    Text(L("priority.footer"))
                 }
 
                 // Effort Section (Time-based)
@@ -98,76 +102,120 @@ struct AddTaskSheet: View {
                         }
                     }
                 } header: {
-                    Text("Time Needed")
+                    Text(L("effort.title"))
                 } footer: {
-                    Text("Estimated time to complete this task")
+                    Text(L("effort.footer"))
                 }
 
                 // Due Date Section
                 Section {
-                    Toggle("Set due date", isOn: $hasDueDate.animation())
+                    Toggle(L("duedate.toggle"), isOn: $hasDueDate.animation())
+                        .disabled(isRecurring)
+                        .onChange(of: hasDueDate) { _, newValue in
+                            if newValue {
+                                isRecurring = false
+                            }
+                        }
 
                     if hasDueDate {
-                        DatePicker(
-                            "Due date",
-                            selection: $dueDate,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
+                        HStack {
+                            // Tappable type selector
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    dueDateType = dueDateType == .on ? .before : .on
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(dueDateType.displayName)
+                                        .foregroundColor(.primary)
+                                        .fontWeight(.medium)
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(dueDateType == .on ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Spacer()
+
+                            DatePicker(
+                                "",
+                                selection: $dueDate,
+                                displayedComponents: [.date, .hourAndMinute]
+                            )
+                            .labelsHidden()
+                        }
                     }
                 } header: {
-                    Text("Due Date")
+                    Text(L("duedate.title"))
                 } footer: {
                     if hasDueDate {
-                        Text("Overdue tasks will grow larger over time")
+                        Text(dueDateType.description)
+                    } else if isRecurring {
+                        Text(L("duedate.recurring.disabled"))
                     }
                 }
 
                 // Recurring Section
                 Section {
-                    Toggle("Recurring task", isOn: $isRecurring.animation())
+                    Toggle(L("recurring.toggle"), isOn: $isRecurring.animation())
+                        .disabled(hasDueDate)
+                        .onChange(of: isRecurring) { _, newValue in
+                            if newValue {
+                                hasDueDate = false
+                            }
+                        }
 
                     if isRecurring {
-                        Picker("Repeat", selection: $recurringInterval) {
+                        Picker(L("recurring.repeat"), selection: $recurringInterval) {
                             ForEach(RecurringInterval.allCases, id: \.self) { interval in
-                                Text(interval.rawValue).tag(interval)
+                                Text(interval.displayName).tag(interval)
                             }
                         }
 
                         // Weekly options
                         if recurringInterval == .weekly {
-                            Toggle("Choose specific days", isOn: $useSpecificDays.animation())
+                            Toggle(L("recurring.specificdays"), isOn: $useSpecificDays.animation())
 
                             if useSpecificDays {
                                 WeekdayPicker(selectedDays: $selectedWeekdays)
                             } else {
-                                Stepper("Times per week: \(recurringCount)", value: $recurringCount, in: 1...7)
+                                Stepper(String(format: L("recurring.timesperweek"), recurringCount), value: $recurringCount, in: 1...7)
                             }
                         }
 
                         // Monthly options
                         if recurringInterval == .monthly {
-                            Stepper("Times per month: \(recurringCount)", value: $recurringCount, in: 1...30)
+                            Stepper(String(format: L("recurring.timespermonth"), recurringCount), value: $recurringCount, in: 1...30)
                         }
                     }
                 } header: {
-                    Text("Recurring")
+                    Text(L("recurring.title"))
                 } footer: {
                     if isRecurring {
-                        Text("A new task will be created when you complete this one")
+                        Text(L("recurring.footer"))
+                    } else if hasDueDate {
+                        Text(L("recurring.duedate.disabled"))
                     }
                 }
             }
-            .navigationTitle("New Task")
+            .navigationTitle(L("task.new"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L("task.cancel")) {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("task.save")) {
                         saveTask()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -197,11 +245,21 @@ struct AddTaskSheet: View {
             ? selectedWeekdays.map { $0.rawValue }
             : []
 
+        // For recurring tasks, set initial dueDate to today
+        // For one-time tasks, use the user-selected due date
+        let taskDueDate: Date?
+        if isRecurring {
+            taskDueDate = Date() // Recurring tasks start today
+        } else {
+            taskDueDate = hasDueDate ? dueDate : nil
+        }
+
         let newTask = TaskItem(
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             priority: priority,
             effort: effort,
-            dueDate: hasDueDate ? dueDate : nil,
+            dueDate: taskDueDate,
+            dueDateType: dueDateType,
             isRecurring: isRecurring,
             recurringInterval: isRecurring ? recurringInterval : nil,
             recurringCount: recurringCount,
@@ -209,6 +267,10 @@ struct AddTaskSheet: View {
         )
 
         modelContext.insert(newTask)
+
+        // Play satisfying sound when adding task
+        SoundManager.playSuccessWithHaptic()
+
         dismiss()
     }
 }
@@ -220,7 +282,7 @@ struct WeekdayPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Select days")
+            Text(L("recurring.selectdays"))
                 .font(.caption)
                 .foregroundColor(.secondary)
 

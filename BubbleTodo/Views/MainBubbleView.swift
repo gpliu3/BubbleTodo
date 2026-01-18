@@ -5,7 +5,7 @@
 
 import SwiftUI
 import SwiftData
-internal import Combine
+import Combine
 
 struct MainBubbleView: View {
     @Environment(\.modelContext) private var modelContext
@@ -17,6 +17,7 @@ struct MainBubbleView: View {
     @State private var selectedTask: TaskItem?
     @State private var showingEditSheet = false
     @State private var currentTime = Date()
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
     // Undo state
     @State private var recentlyCompletedTask: TaskItem?
@@ -97,14 +98,8 @@ struct MainBubbleView: View {
                 }
             }
         }
-        .navigationTitle("Pop the tasks!")
+        .navigationTitle(L("main.title"))
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                // Show day progress indicator
-                DayProgressIndicator(progress: dayProgress)
-            }
-        }
         .sheet(isPresented: $showingAddSheet) {
             AddTaskSheet()
         }
@@ -124,11 +119,11 @@ struct MainBubbleView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
 
-            Text("All clear for today!")
+            Text(L("main.empty.title"))
                 .font(.title2)
                 .foregroundColor(.secondary)
 
-            Text("Tap + to add a new task")
+            Text(L("main.empty.subtitle"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -256,14 +251,14 @@ struct UndoToastView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
 
-            Text("Completed: \(taskTitle)")
+            Text(String(format: L("main.completed"), taskTitle))
                 .font(.subheadline)
                 .lineLimit(1)
 
             Spacer()
 
             Button(action: onUndo) {
-                Text("Undo")
+                Text(L("main.undo"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(.blue)
             }

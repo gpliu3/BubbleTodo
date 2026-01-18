@@ -17,6 +17,7 @@ struct EditTaskSheet: View {
     @State private var effort: Double
     @State private var hasDueDate: Bool
     @State private var dueDate: Date
+    @State private var dueDateType: DueDateType
     @State private var isRecurring: Bool
     @State private var recurringInterval: RecurringInterval
     @State private var recurringCount: Int
@@ -39,6 +40,7 @@ struct EditTaskSheet: View {
         _effort = State(initialValue: task.effort)
         _hasDueDate = State(initialValue: task.dueDate != nil)
         _dueDate = State(initialValue: task.dueDate ?? Date())
+        _dueDateType = State(initialValue: task.effectiveDueDateType)
         _isRecurring = State(initialValue: task.isRecurring)
         _recurringInterval = State(initialValue: task.recurringInterval ?? .daily)
         _recurringCount = State(initialValue: task.recurringCount)
@@ -121,21 +123,67 @@ struct EditTaskSheet: View {
                 // Due Date Section
                 Section {
                     Toggle("Set due date", isOn: $hasDueDate.animation())
+                        .disabled(isRecurring)
+                        .onChange(of: hasDueDate) { _, newValue in
+                            if newValue {
+                                isRecurring = false
+                            }
+                        }
 
                     if hasDueDate {
-                        DatePicker(
-                            "Due date",
-                            selection: $dueDate,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
+                        HStack {
+                            // Tappable type selector
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    dueDateType = dueDateType == .on ? .before : .on
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(dueDateType.rawValue)
+                                        .foregroundColor(.primary)
+                                        .fontWeight(.medium)
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(dueDateType == .on ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Spacer()
+
+                            DatePicker(
+                                "",
+                                selection: $dueDate,
+                                displayedComponents: [.date, .hourAndMinute]
+                            )
+                            .labelsHidden()
+                        }
                     }
                 } header: {
                     Text("Due Date")
+                } footer: {
+                    if hasDueDate {
+                        Text(dueDateType == .on ? "Task only shows on the due date" : "Task shows early and urgency increases as deadline approaches")
+                    } else if isRecurring {
+                        Text("Recurring tasks cannot have due dates")
+                    }
                 }
 
                 // Recurring Section
                 Section {
                     Toggle("Recurring task", isOn: $isRecurring.animation())
+                        .disabled(hasDueDate)
+                        .onChange(of: isRecurring) { _, newValue in
+                            if newValue {
+                                hasDueDate = false
+                            }
+                        }
 
                     if isRecurring {
                         Picker("Repeat", selection: $recurringInterval) {
@@ -162,6 +210,12 @@ struct EditTaskSheet: View {
                     }
                 } header: {
                     Text("Recurring")
+                } footer: {
+                    if isRecurring {
+                        Text("A new task will be created when you complete this one")
+                    } else if hasDueDate {
+                        Text("Due date tasks cannot be recurring")
+                    }
                 }
 
                 // Task Info Section
@@ -249,14 +303,27 @@ struct EditTaskSheet: View {
             ? selectedWeekdays.map { $0.rawValue }
             : []
 
+        // For recurring tasks, ensure dueDate is set (use existing or today)
+        // For one-time tasks, use the user-selected due date
+        let taskDueDate: Date?
+        if isRecurring {
+            taskDueDate = task.dueDate ?? Date() // Keep existing or start today
+        } else {
+            taskDueDate = hasDueDate ? dueDate : nil
+        }
+
         task.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         task.priority = priority
         task.effort = effort
-        task.dueDate = hasDueDate ? dueDate : nil
+        task.dueDate = taskDueDate
+        task.dueDateType = dueDateType
         task.isRecurring = isRecurring
         task.recurringInterval = isRecurring ? recurringInterval : nil
         task.recurringCount = recurringCount
         task.weeklyDays = weeklyDays
+
+        // Play subtle success sound
+        SoundManager.playSuccessWithHaptic()
 
         dismiss()
     }

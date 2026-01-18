@@ -88,9 +88,15 @@ struct BubbleView: View {
                             .fill(Color.black.opacity(0.2))
                     )
             }
+
+            // Burst animation overlay when popping
+            if isPopping {
+                BubblePopAnimation(color: bubbleColor, diameter: diameter)
+                    .allowsHitTesting(false)
+            }
         }
         .offset(y: bobOffset)
-        .scaleEffect(isPopping ? 1.3 : 1.0)
+        .scaleEffect(isPopping ? 1.2 : 1.0)
         .opacity(isPopping ? 0 : 1)
         .onAppear {
             startBobbing()
@@ -121,24 +127,32 @@ struct BubbleView: View {
     }
 
     private func pop() {
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
+        // Play satisfying pop sound with haptic
+        SoundManager.playPopWithHaptic()
 
-        withAnimation(.easeOut(duration: 0.3)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
             isPopping = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             onTap()
         }
     }
 }
 
 #Preview {
-    HStack(spacing: 20) {
-        BubbleView(task: TaskItem(title: "Quick", priority: 1, effort: 1), onTap: {}, onLongPress: {})
-        BubbleView(task: TaskItem(title: "Medium task", priority: 3, effort: 30), onTap: {}, onLongPress: {})
-        BubbleView(task: TaskItem(title: "Big project", priority: 5, effort: 120), onTap: {}, onLongPress: {})
+    ZStack {
+        LinearGradient(
+            colors: [Color(.systemBackground), Color(.systemGray6)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+
+        HStack(spacing: 30) {
+            BubbleView(task: TaskItem(title: "Quick", priority: 1, effort: 1), onTap: {}, onLongPress: {})
+            BubbleView(task: TaskItem(title: "Medium task", priority: 3, effort: 30), onTap: {}, onLongPress: {})
+            BubbleView(task: TaskItem(title: "Big project", priority: 5, effort: 120), onTap: {}, onLongPress: {})
+        }
     }
-    .padding()
 }
