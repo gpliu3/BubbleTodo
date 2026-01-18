@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+
+    <!-- Bubble gradients -->
+    <radialGradient id="greenBubble" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#6ee7b7"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </radialGradient>
+
+    <radialGradient id="yellowBubble" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#fde68a"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </radialGradient>
+
+    <radialGradient id="orangeBubble" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#fdba74"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </radialGradient>
+
+    <radialGradient id="redBubble" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#fca5a5"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </radialGradient>
+
+    <radialGradient id="purpleBubble" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:#c4b5fd"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </radialGradient>
+
+    <!-- Shine effect -->
+    <radialGradient id="shine" cx="30%" cy="30%" r="50%">
+      <stop offset="0%" style="stop-color:white;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:white;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bgGrad)"/>
+
+  <!-- Main large purple bubble (being popped - at top) -->
+  <g transform="translate(512, 280)">
+    <circle r="200" fill="url(#purpleBubble)" opacity="0.95"/>
+    <ellipse cx="-60" cy="-60" rx="50" ry="40" fill="url(#shine)"/>
+    <!-- Pop sparkles -->
+    <g stroke="#fff" stroke-width="8" stroke-linecap="round" opacity="0.9">
+      <line x1="180" y1="-80" x2="230" y2="-120"/>
+      <line x1="200" y1="0" x2="260" y2="0"/>
+      <line x1="180" y1="80" x2="230" y2="120"/>
+      <line x1="-180" y1="-80" x2="-230" y2="-120"/>
+    </g>
+  </g>
+
+  <!-- Medium orange bubble (left) -->
+  <g transform="translate(250, 580)">
+    <circle r="140" fill="url(#orangeBubble)" opacity="0.95"/>
+    <ellipse cx="-40" cy="-40" rx="35" ry="28" fill="url(#shine)"/>
+  </g>
+
+  <!-- Medium red bubble (right) -->
+  <g transform="translate(750, 520)">
+    <circle r="150" fill="url(#redBubble)" opacity="0.95"/>
+    <ellipse cx="-45" cy="-45" rx="38" ry="30" fill="url(#shine)"/>
+  </g>
+
+  <!-- Small green bubble (bottom left) -->
+  <g transform="translate(380, 780)">
+    <circle r="100" fill="url(#greenBubble)" opacity="0.95"/>
+    <ellipse cx="-30" cy="-30" rx="25" ry="20" fill="url(#shine)"/>
+  </g>
+
+  <!-- Small yellow bubble (bottom right) -->
+  <g transform="translate(620, 820)">
+    <circle r="90" fill="url(#yellowBubble)" opacity="0.95"/>
+    <ellipse cx="-27" cy="-27" rx="22" ry="18" fill="url(#shine)"/>
+  </g>
+
+  <!-- Tiny decorative bubbles -->
+  <circle cx="150" cy="200" r="40" fill="url(#greenBubble)" opacity="0.6"/>
+  <circle cx="880" cy="280" r="35" fill="url(#yellowBubble)" opacity="0.6"/>
+  <circle cx="900" cy="750" r="45" fill="url(#orangeBubble)" opacity="0.5"/>
+  <circle cx="120" cy="420" r="30" fill="url(#purpleBubble)" opacity="0.5"/>
+
+  <!-- Checkmark inside main bubble -->
+  <g transform="translate(512, 280)">
+    <path d="M-60,10 L-20,60 L80,-50"
+          stroke="white"
+          stroke-width="28"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"
+          opacity="0.95"/>
+  </g>
+</svg>

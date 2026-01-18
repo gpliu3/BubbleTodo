@@ -97,7 +97,7 @@ struct MainBubbleView: View {
                 }
             }
         }
-        .navigationTitle("Bubbles")
+        .navigationTitle("Pop the tasks!")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
