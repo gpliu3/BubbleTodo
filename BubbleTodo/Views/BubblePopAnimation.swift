@@ -20,8 +20,8 @@ struct BubblePopAnimation: View {
                     .scaleEffect(isAnimating ? 2.5 : 1.0)
                     .opacity(isAnimating ? 0 : 1)
                     .animation(
-                        .easeOut(duration: 0.5)
-                            .delay(Double(index) * 0.1),
+                        .easeOut(duration: 1.5)
+                            .delay(Double(index) * 0.3),
                         value: isAnimating
                     )
             }
@@ -58,7 +58,7 @@ struct BubblePopAnimation: View {
                 .frame(width: diameter, height: diameter)
                 .scaleEffect(isAnimating ? 3.0 : 0.1)
                 .opacity(isAnimating ? 0 : 1)
-                .animation(.easeOut(duration: 0.4), value: isAnimating)
+                .animation(.easeOut(duration: 1.2), value: isAnimating)
         }
         .onAppear {
             isAnimating = true
@@ -97,7 +97,7 @@ struct ParticleView: View {
             .scaleEffect(isAnimating ? 0.3 : 1.0)
             .opacity(isAnimating ? 0 : 1)
             .animation(
-                .easeOut(duration: 0.6),
+                .easeOut(duration: 1.8),
                 value: isAnimating
             )
     }
@@ -146,8 +146,8 @@ struct SparkleView: View {
         .opacity(isAnimating ? 0 : 1)
         .rotationEffect(.degrees(isAnimating ? 180 : 0))
         .animation(
-            .easeOut(duration: 0.7)
-                .delay(0.1),
+            .easeOut(duration: 2.1)
+                .delay(0.3),
             value: isAnimating
         )
     }

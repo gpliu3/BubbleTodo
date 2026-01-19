@@ -8,6 +8,9 @@ import AudioToolbox
 import UIKit
 
 enum SoundManager {
+    private static var popPlayer: AVAudioPlayer?
+    private static var successPlayer: AVAudioPlayer?
+
     /// Configure audio session to allow sounds even in silent mode
     private static func configureAudioSession() {
         do {
@@ -30,33 +33,66 @@ enum SoundManager {
     /// Play sound when adding a new task
     static func playAddTaskSound() {
         configureAudioSession()
-        // Use system success sound
-        AudioServicesPlaySystemSound(1054) // New mail sound - gentle chime
+
+        // Use AVAudioPlayer for louder sound
+        if let soundURL = Bundle.main.url(forResource: "Tock", withExtension: "aiff", subdirectory: "SystemSounds") ??
+                          URL(string: "/System/Library/Audio/UISounds/Tock.aiff") {
+            do {
+                successPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                successPlayer?.volume = 1.0  // Maximum volume
+                successPlayer?.play()
+            } catch {
+                // Fallback to system sound
+                AudioServicesPlaySystemSound(1054)
+            }
+        } else {
+            AudioServicesPlaySystemSound(1054)
+        }
     }
 
     /// Play haptic feedback with sound
     static func playPopWithHaptic() {
         configureAudioSession()
 
-        // Strong vibration for satisfying pop feeling
-        let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
-        impactFeedback.impactOccurred()
+        // Use AVAudioPlayer for MUCH louder sound
+        if let soundURL = URL(string: "/System/Library/Audio/UISounds/nano/3rdParty_Success_Haptic.caf") {
+            do {
+                popPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                popPlayer?.volume = 1.0  // Maximum volume
+                popPlayer?.play()
+            } catch {
+                // Fallback to system sound
+                AudioServicesPlaySystemSound(1104)
+            }
+        } else {
+            AudioServicesPlaySystemSound(1104)
+        }
 
-        // Play a satisfying pop sound
-        AudioServicesPlaySystemSound(1519) // Actuate sound - clean pop
-
-        // Optional: Add system vibration for older devices
-        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+        // Haptic feedback
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+            impactFeedback.impactOccurred()
+        }
     }
 
     /// Play success sound with haptic
     static func playSuccessWithHaptic() {
         configureAudioSession()
 
+        // Use AVAudioPlayer for louder sound
+        if let soundURL = URL(string: "/System/Library/Audio/UISounds/new-mail.caf") {
+            do {
+                successPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                successPlayer?.volume = 1.0  // Maximum volume
+                successPlayer?.play()
+            } catch {
+                AudioServicesPlaySystemSound(1025)
+            }
+        } else {
+            AudioServicesPlaySystemSound(1025)
+        }
+
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.success)
-
-        // Play success chime
-        AudioServicesPlaySystemSound(1025) // SMS received tone - satisfying
     }
 }

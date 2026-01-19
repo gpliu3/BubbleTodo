@@ -24,14 +24,17 @@ struct EditTaskSheet: View {
     @State private var selectedWeekdays: Set<Weekday>
     @State private var useSpecificDays: Bool
     @State private var showingDeleteConfirmation = false
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
-    private let priorityOptions = [
-        (value: 1, label: "Low", color: Color.green),
-        (value: 2, label: "Medium", color: Color.yellow),
-        (value: 3, label: "High", color: Color.orange),
-        (value: 4, label: "Urgent", color: Color.red),
-        (value: 5, label: "Critical", color: Color.purple)
-    ]
+    private var priorityOptions: [(value: Int, label: String, color: Color)] {
+        [
+            (value: 1, label: L("priority.low"), color: Color.green),
+            (value: 2, label: L("priority.medium"), color: Color.yellow),
+            (value: 3, label: L("priority.high"), color: Color.orange),
+            (value: 4, label: L("priority.urgent"), color: Color.red),
+            (value: 5, label: L("priority.critical"), color: Color.purple)
+        ]
+    }
 
     init(task: TaskItem) {
         self.task = task
@@ -53,15 +56,16 @@ struct EditTaskSheet: View {
             Form {
                 // Title Section
                 Section {
-                    TextField("What needs to be done?", text: $title)
+                    TextField(L("task.placeholder"), text: $title)
                         .font(.body)
                 } header: {
-                    Text("Task")
+                    Text(L("task.title"))
+                        .textCase(nil)
                 }
 
                 // Priority Section
                 Section {
-                    Picker("Priority", selection: $priority) {
+                    Picker(L("priority.title"), selection: $priority) {
                         ForEach(priorityOptions, id: \.value) { option in
                             HStack {
                                 Circle()
@@ -92,68 +96,94 @@ struct EditTaskSheet: View {
                             .foregroundColor(.secondary)
                     }
                 } header: {
-                    Text("Priority")
+                    Text(L("priority.title"))
                 }
 
                 // Effort Section (Time-based)
                 Section {
-                    // Time effort buttons
-                    HStack(spacing: 8) {
-                        ForEach(TaskItem.effortOptions, id: \.value) { option in
-                            Button {
-                                effort = option.value
-                            } label: {
-                                Text(option.label)
-                                    .font(.caption.weight(.medium))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
-                                    .foregroundColor(effort == option.value ? .white : .primary)
-                                    .cornerRadius(8)
+                    VStack(spacing: 8) {
+                        // First row: 1 min, 5 min, 15 min
+                        HStack(spacing: 8) {
+                            ForEach(Array(TaskItem.effortOptions.prefix(3)), id: \.value) { option in
+                                Button {
+                                    effort = option.value
+                                } label: {
+                                    Text(option.label)
+                                        .font(.subheadline.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(effort == option.value ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+                        }
+
+                        // Second row: 30 min, 1 hour, 2 hours
+                        HStack(spacing: 8) {
+                            ForEach(Array(TaskItem.effortOptions.dropFirst(3)), id: \.value) { option in
+                                Button {
+                                    effort = option.value
+                                } label: {
+                                    Text(option.label)
+                                        .font(.subheadline.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(effort == option.value ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 } header: {
-                    Text("Time Needed")
+                    Text(L("effort.title"))
                 } footer: {
-                    Text("Estimated time to complete this task")
+                    Text(L("effort.footer"))
                 }
 
                 // Due Date Section
                 Section {
-                    Toggle("Set due date", isOn: $hasDueDate.animation())
-                        .disabled(isRecurring)
+                    Toggle(L("duedate.toggle"), isOn: $hasDueDate.animation())
                         .onChange(of: hasDueDate) { _, newValue in
                             if newValue {
+                                // Turning on due date, turn off recurring
                                 isRecurring = false
+                            } else {
+                                // Turning off due date, must turn on recurring
+                                isRecurring = true
                             }
                         }
 
                     if hasDueDate {
-                        HStack {
+                        HStack(spacing: 8) {
                             // Tappable type selector
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     dueDateType = dueDateType == .on ? .before : .on
                                 }
                             } label: {
-                                HStack(spacing: 4) {
-                                    Text(dueDateType.rawValue)
+                                HStack(spacing: 3) {
+                                    Text(dueDateType.displayName)
+                                        .font(.subheadline)
                                         .foregroundColor(.primary)
                                         .fontWeight(.medium)
+                                        .lineLimit(1)
                                     Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.caption)
+                                        .font(.caption2)
                                         .foregroundColor(.blue)
                                 }
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 5)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8)
+                                    RoundedRectangle(cornerRadius: 6)
                                         .fill(dueDateType == .on ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
                                 )
                             }
                             .buttonStyle(.plain)
+                            .fixedSize()
 
                             Spacer()
 
@@ -163,79 +193,80 @@ struct EditTaskSheet: View {
                                 displayedComponents: [.date, .hourAndMinute]
                             )
                             .labelsHidden()
+                            .datePickerStyle(.compact)
                         }
                     }
                 } header: {
-                    Text("Due Date")
+                    Text(L("duedate.title"))
                 } footer: {
                     if hasDueDate {
-                        Text(dueDateType == .on ? "Task only shows on the due date" : "Task shows early and urgency increases as deadline approaches")
+                        Text(dueDateType.description)
                     } else if isRecurring {
-                        Text("Recurring tasks cannot have due dates")
+                        Text(L("duedate.recurring.disabled"))
                     }
                 }
 
                 // Recurring Section
                 Section {
-                    Toggle("Recurring task", isOn: $isRecurring.animation())
-                        .disabled(hasDueDate)
+                    Toggle(L("recurring.toggle"), isOn: $isRecurring.animation())
                         .onChange(of: isRecurring) { _, newValue in
                             if newValue {
+                                // Turning on recurring, turn off due date
                                 hasDueDate = false
+                            } else {
+                                // Turning off recurring, must turn on due date
+                                hasDueDate = true
                             }
                         }
 
                     if isRecurring {
-                        Picker("Repeat", selection: $recurringInterval) {
+                        Picker(L("recurring.repeat"), selection: $recurringInterval) {
                             ForEach(RecurringInterval.allCases, id: \.self) { interval in
-                                Text(interval.rawValue).tag(interval)
+                                Text(interval.displayName).tag(interval)
                             }
                         }
 
                         // Weekly options
                         if recurringInterval == .weekly {
-                            Toggle("Choose specific days", isOn: $useSpecificDays.animation())
+                            Toggle(L("recurring.specificdays"), isOn: $useSpecificDays.animation())
 
                             if useSpecificDays {
                                 WeekdayPicker(selectedDays: $selectedWeekdays)
                             } else {
-                                Stepper("Times per week: \(recurringCount)", value: $recurringCount, in: 1...7)
+                                Stepper(String(format: L("recurring.timesperweek"), recurringCount), value: $recurringCount, in: 1...7)
                             }
                         }
 
                         // Monthly options
                         if recurringInterval == .monthly {
-                            Stepper("Times per month: \(recurringCount)", value: $recurringCount, in: 1...30)
+                            Stepper(String(format: L("recurring.timespermonth"), recurringCount), value: $recurringCount, in: 1...30)
                         }
                     }
                 } header: {
-                    Text("Recurring")
+                    Text(L("recurring.title"))
                 } footer: {
                     if isRecurring {
-                        Text("A new task will be created when you complete this one")
+                        Text(L("recurring.footer"))
                     } else if hasDueDate {
-                        Text("Due date tasks cannot be recurring")
+                        Text(L("recurring.duedate.disabled"))
                     }
                 }
 
                 // Task Info Section
-                Section {
-                    LabeledContent("Created") {
-                        Text(task.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    }
-
-                    LabeledContent("Effort") {
-                        Text(String(format: "%.1f", task.effort))
+                Section(header: Text(L("info.title"))) {
+                    LabeledContent(L("info.created")) {
+                        Text(task.createdAt.formatted(.dateTime.month().day().hour().minute()))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
 
                     if task.effectiveWeight > 1.0 {
-                        LabeledContent("Urgency weight") {
-                            Text(String(format: "%.2f", task.effectiveWeight))
+                        LabeledContent(L("info.urgency")) {
+                            Text(String(format: "%.1fx", task.effectiveWeight))
+                                .font(.subheadline)
                                 .foregroundColor(.orange)
                         }
                     }
-                } header: {
-                    Text("Info")
                 }
 
                 // Delete Section
@@ -245,23 +276,24 @@ struct EditTaskSheet: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Label("Delete Task", systemImage: "trash")
+                            Label(L("task.delete"), systemImage: "trash")
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle("Edit Task")
+            .listRowSpacing(8)
+            .navigationTitle(L("task.edit"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L("task.cancel")) {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("task.save")) {
                         saveChanges()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -269,16 +301,16 @@ struct EditTaskSheet: View {
                 }
             }
             .confirmationDialog(
-                "Delete this task?",
+                L("task.delete.confirm"),
                 isPresented: $showingDeleteConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Delete", role: .destructive) {
+                Button(L("task.delete"), role: .destructive) {
                     deleteTask()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L("task.cancel"), role: .cancel) {}
             } message: {
-                Text("This action cannot be undone.")
+                Text(L("task.delete.message"))
             }
         }
     }

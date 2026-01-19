@@ -98,6 +98,8 @@
 "completed.stats.time" = "总时长";
 "completed.empty" = "没有已完成的任务";
 "completed.restore" = "恢复";
+"completed.restore.error.title" = "无法恢复";
+"completed.restore.error.message" = "截止日期已过的任务无法恢复。请先编辑任务以更新截止日期。";
 
 /* Settings */
 "settings.title" = "设置";
@@ -108,3 +110,19 @@
 "settings.appearance" = "外观";
 "settings.about" = "关于";
 "settings.version" = "版本";
+
+/* Notifications */
+"settings.notifications" = "通知";
+"settings.notifications.enable" = "每日提醒";
+"settings.notifications.frequency" = "每日提醒次数";
+"settings.notifications.times" = "%d 次";
+"settings.notifications.reminder" = "提醒 %d";
+"settings.notifications.footer" = "每天会在这些时间提醒您未完成的任务";
+"settings.notifications.permission.title" = "通知权限";
+"settings.notifications.permission.message" = "请在设置中允许通知，以便接收任务提醒";
+"settings.notifications.permission.settings" = "打开设置";
+"notification.reminder.title" = "任务提醒";
+"notification.reminder.body" = "您有待完成的任务";
+"notification.no.tasks" = "全部完成！今天没有任务。";
+"notification.tasks.list" = "您有 %d %@：";
+"notification.tasks.more" = "...还有 %d 个";

@@ -14,8 +14,7 @@ struct MainBubbleView: View {
     private var allTasks: [TaskItem]
 
     @State private var showingAddSheet = false
-    @State private var selectedTask: TaskItem?
-    @State private var showingEditSheet = false
+    @State private var editingTask: TaskItem?
     @State private var currentTime = Date()
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
@@ -103,10 +102,8 @@ struct MainBubbleView: View {
         .sheet(isPresented: $showingAddSheet) {
             AddTaskSheet()
         }
-        .sheet(isPresented: $showingEditSheet) {
-            if let task = selectedTask {
-                EditTaskSheet(task: task)
-            }
+        .sheet(item: $editingTask) { task in
+            EditTaskSheet(task: task)
         }
         .onReceive(timeUpdateTimer) { _ in
             currentTime = Date()
@@ -114,17 +111,17 @@ struct MainBubbleView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 60))
+                .font(.system(size: 48))
                 .foregroundColor(.secondary)
 
             Text(L("main.empty.title"))
-                .font(.title2)
+                .font(.title3)
                 .foregroundColor(.secondary)
 
             Text(L("main.empty.subtitle"))
-                .font(.subheadline)
+                .font(.callout)
                 .foregroundColor(.secondary)
         }
     }
@@ -141,8 +138,7 @@ struct MainBubbleView: View {
                         completeTask(task)
                     },
                     onLongPress: { task in
-                        selectedTask = task
-                        showingEditSheet = true
+                        editingTask = task
                     }
                 )
                 .padding(.bottom, 100) // Space for add button
@@ -155,9 +151,9 @@ struct MainBubbleView: View {
             showingAddSheet = true
         }) {
             Image(systemName: "plus")
-                .font(.title2.weight(.semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundColor(.white)
-                .frame(width: 60, height: 60)
+                .frame(width: 56, height: 56)
                 .background(
                     Circle()
                         .fill(
@@ -168,7 +164,7 @@ struct MainBubbleView: View {
                             )
                         )
                 )
-                .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
+                .shadow(color: .blue.opacity(0.3), radius: 6, x: 0, y: 3)
         }
     }
 
@@ -247,28 +243,29 @@ struct UndoToastView: View {
     let onUndo: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
+                .font(.body)
                 .foregroundColor(.green)
 
             Text(String(format: L("main.completed"), taskTitle))
-                .font(.subheadline)
+                .font(.callout)
                 .lineLimit(1)
 
             Spacer()
 
             Button(action: onUndo) {
                 Text(L("main.undo"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundColor(.blue)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
         )
     }
 }

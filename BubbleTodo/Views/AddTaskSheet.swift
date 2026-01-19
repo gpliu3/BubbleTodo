@@ -13,8 +13,8 @@ struct AddTaskSheet: View {
     @State private var title = ""
     @State private var priority = 3
     @State private var effort: Double = 15.0 // Default to 15 minutes
-    @State private var hasDueDate = false
-    @State private var dueDate = Date()
+    @State private var hasDueDate = true // Default to having a due date
+    @State private var dueDate = Date() // Default to today + current time
     @State private var dueDateType: DueDateType = .before
     @State private var isRecurring = false
     @State private var recurringInterval: RecurringInterval = .daily
@@ -42,6 +42,7 @@ struct AddTaskSheet: View {
                         .font(.body)
                 } header: {
                     Text(L("task.title"))
+                        .textCase(nil)
                 }
 
                 // Priority Section
@@ -84,21 +85,41 @@ struct AddTaskSheet: View {
 
                 // Effort Section (Time-based)
                 Section {
-                    // Time effort buttons
-                    HStack(spacing: 8) {
-                        ForEach(TaskItem.effortOptions, id: \.value) { option in
-                            Button {
-                                effort = option.value
-                            } label: {
-                                Text(option.label)
-                                    .font(.caption.weight(.medium))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
-                                    .foregroundColor(effort == option.value ? .white : .primary)
-                                    .cornerRadius(8)
+                    VStack(spacing: 8) {
+                        // First row: 1 min, 5 min, 15 min
+                        HStack(spacing: 8) {
+                            ForEach(Array(TaskItem.effortOptions.prefix(3)), id: \.value) { option in
+                                Button {
+                                    effort = option.value
+                                } label: {
+                                    Text(option.label)
+                                        .font(.subheadline.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(effort == option.value ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+                        }
+
+                        // Second row: 30 min, 1 hour, 2 hours
+                        HStack(spacing: 8) {
+                            ForEach(Array(TaskItem.effortOptions.dropFirst(3)), id: \.value) { option in
+                                Button {
+                                    effort = option.value
+                                } label: {
+                                    Text(option.label)
+                                        .font(.subheadline.weight(.medium))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(effort == option.value ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(effort == option.value ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 } header: {
@@ -110,37 +131,43 @@ struct AddTaskSheet: View {
                 // Due Date Section
                 Section {
                     Toggle(L("duedate.toggle"), isOn: $hasDueDate.animation())
-                        .disabled(isRecurring)
                         .onChange(of: hasDueDate) { _, newValue in
                             if newValue {
+                                // Turning on due date, turn off recurring
                                 isRecurring = false
+                            } else {
+                                // Turning off due date, must turn on recurring
+                                isRecurring = true
                             }
                         }
 
                     if hasDueDate {
-                        HStack {
+                        HStack(spacing: 8) {
                             // Tappable type selector
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     dueDateType = dueDateType == .on ? .before : .on
                                 }
                             } label: {
-                                HStack(spacing: 4) {
+                                HStack(spacing: 3) {
                                     Text(dueDateType.displayName)
+                                        .font(.subheadline)
                                         .foregroundColor(.primary)
                                         .fontWeight(.medium)
+                                        .lineLimit(1)
                                     Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.caption)
+                                        .font(.caption2)
                                         .foregroundColor(.blue)
                                 }
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 5)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8)
+                                    RoundedRectangle(cornerRadius: 6)
                                         .fill(dueDateType == .on ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
                                 )
                             }
                             .buttonStyle(.plain)
+                            .fixedSize()
 
                             Spacer()
 
@@ -150,6 +177,7 @@ struct AddTaskSheet: View {
                                 displayedComponents: [.date, .hourAndMinute]
                             )
                             .labelsHidden()
+                            .datePickerStyle(.compact)
                         }
                     }
                 } header: {
@@ -165,10 +193,13 @@ struct AddTaskSheet: View {
                 // Recurring Section
                 Section {
                     Toggle(L("recurring.toggle"), isOn: $isRecurring.animation())
-                        .disabled(hasDueDate)
                         .onChange(of: isRecurring) { _, newValue in
                             if newValue {
+                                // Turning on recurring, turn off due date
                                 hasDueDate = false
+                            } else {
+                                // Turning off recurring, must turn on due date
+                                hasDueDate = true
                             }
                         }
 
@@ -205,6 +236,7 @@ struct AddTaskSheet: View {
                     }
                 }
             }
+            .listRowSpacing(8)
             .navigationTitle(L("task.new"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

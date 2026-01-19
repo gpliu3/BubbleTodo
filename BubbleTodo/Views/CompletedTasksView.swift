@@ -15,12 +15,23 @@ struct CompletedTasksView: View {
 
     @State private var selectedPeriod: TimePeriod = .week
     @State private var showingClearConfirmation = false
+    @State private var editingTask: TaskItem?
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
     enum TimePeriod: String, CaseIterable {
         case today = "Today"
         case week = "This Week"
         case month = "This Month"
         case all = "All Time"
+
+        var displayName: String {
+            switch self {
+            case .today: return L("completed.filter.today")
+            case .week: return L("completed.filter.week")
+            case .month: return L("completed.filter.month")
+            case .all: return L("completed.filter.all")
+            }
+        }
 
         var startDate: Date? {
             let calendar = Calendar.current
@@ -66,7 +77,7 @@ struct CompletedTasksView: View {
                       completedAt >= weekAgo {
                 return "This Week"
             } else {
-                return completedAt.formatted(.dateTime.month().day())
+                return completedAt.formatted(.dateTime.month(.abbreviated).day())
             }
         }
 
@@ -95,7 +106,7 @@ struct CompletedTasksView: View {
             Section {
                 Picker("Period", selection: $selectedPeriod) {
                     ForEach(TimePeriod.allCases, id: \.self) { period in
-                        Text(period.rawValue).tag(period)
+                        Text(period.displayName).tag(period)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -112,27 +123,35 @@ struct CompletedTasksView: View {
                     Section(header: Text(section)) {
                         ForEach(tasks) { task in
                             CompletedTaskRow(task: task)
+                                .contentShape(Rectangle())
+                                .onLongPressGesture(minimumDuration: 0.5) {
+                                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                    impactFeedback.impactOccurred()
+                                    editingTask = task
+                                }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         deleteTask(task)
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        Label(L("task.delete"), systemImage: "trash")
                                     }
                                 }
                                 .swipeActions(edge: .leading) {
-                                    Button {
-                                        restoreTask(task)
-                                    } label: {
-                                        Label("Restore", systemImage: "arrow.uturn.backward")
+                                    if canRestore(task) {
+                                        Button {
+                                            restoreTask(task)
+                                        } label: {
+                                            Label(L("completed.restore"), systemImage: "arrow.uturn.backward")
+                                        }
+                                        .tint(.blue)
                                     }
-                                    .tint(.blue)
                                 }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Done")
+        .navigationTitle(L("completed.title"))
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if !completedTasks.isEmpty {
@@ -141,7 +160,7 @@ struct CompletedTasksView: View {
                         Button(role: .destructive) {
                             showingClearConfirmation = true
                         } label: {
-                            Label("Clear All", systemImage: "trash")
+                            Label(L("task.delete"), systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -150,16 +169,19 @@ struct CompletedTasksView: View {
             }
         }
         .confirmationDialog(
-            "Clear all completed tasks?",
+            L("task.delete.confirm"),
             isPresented: $showingClearConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Clear All", role: .destructive) {
+            Button(L("task.delete"), role: .destructive) {
                 clearAllCompleted()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("task.cancel"), role: .cancel) {}
         } message: {
-            Text("This will permanently delete all \(completedTasks.count) completed tasks.")
+            Text(String(format: L("task.delete.message"), completedTasks.count))
+        }
+        .sheet(item: $editingTask) { task in
+            EditTaskSheet(task: task)
         }
     }
 
@@ -178,17 +200,17 @@ struct CompletedTasksView: View {
     }
 
     private var statsCard: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 20) {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
                 StatBox(
-                    title: "Completed",
+                    title: L("completed.stats.tasks"),
                     value: "\(filteredTasks.count)",
                     icon: "checkmark.circle.fill",
                     color: .green
                 )
 
                 StatBox(
-                    title: "Total Time",
+                    title: L("completed.stats.time"),
                     value: formatTotalTime(totalEffort),
                     icon: "clock.fill",
                     color: .orange
@@ -197,42 +219,48 @@ struct CompletedTasksView: View {
 
             if !filteredTasks.isEmpty {
                 let avgMinutes = totalEffort / Double(filteredTasks.count)
-                Text("Average time per task: \(formatTotalTime(avgMinutes))")
-                    .font(.caption)
+                Text("Avg: \(formatTotalTime(avgMinutes))")
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
         }
-        .padding()
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.secondarySystemBackground))
         )
         .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Image(systemName: "tray")
-                .font(.system(size: 40))
+                .font(.system(size: 36))
                 .foregroundColor(.secondary)
 
-            Text("No completed tasks")
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-            Text("Pop some bubbles to see them here!")
+            Text(L("completed.empty"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, 32)
     }
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
             modelContext.delete(task)
         }
+    }
+
+    private func canRestore(_ task: TaskItem) -> Bool {
+        // Check if task has a due date and if it's in the past
+        if let dueDate = task.dueDate {
+            let now = Date()
+            return dueDate >= now
+        }
+        // No due date, can always restore
+        return true
     }
 
     private func restoreTask(_ task: TaskItem) {
@@ -259,23 +287,24 @@ struct StatBox: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(.title3)
                 .foregroundColor(color)
 
             Text(value)
-                .font(.title.weight(.bold))
+                .font(.title2.weight(.bold))
                 .foregroundColor(.primary)
 
             Text(title)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.tertiarySystemBackground))
         )
     }
@@ -302,24 +331,25 @@ struct CompletedTaskRow: View {
             // Priority indicator
             Circle()
                 .fill(priorityColor)
-                .frame(width: 12, height: 12)
+                .frame(width: 10, height: 10)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
                     .font(.body)
                     .strikethrough(true, color: .secondary)
                     .foregroundColor(.secondary)
+                    .lineLimit(2)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     if let completedAt = task.completedAt {
-                        Label(completedAt.formatted(date: .abbreviated, time: .shortened), systemImage: "checkmark")
-                            .font(.caption)
+                        Label(completedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()), systemImage: "checkmark")
+                            .font(.caption2)
                             .foregroundColor(.green)
                     }
 
                     if task.isRecurring, let desc = task.recurringDescription {
                         Label(desc, systemImage: "repeat")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                 }
@@ -329,14 +359,14 @@ struct CompletedTaskRow: View {
 
             // Time effort badge
             Text(task.effortLabel)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .font(.caption2.weight(.medium))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
                 .background(Color.orange.opacity(0.2))
                 .foregroundColor(.orange)
-                .cornerRadius(6)
+                .cornerRadius(4)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 }
 

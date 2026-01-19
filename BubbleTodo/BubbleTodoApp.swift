@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct BubbleTodoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([TaskItem.self])
         let modelConfiguration = ModelConfiguration(

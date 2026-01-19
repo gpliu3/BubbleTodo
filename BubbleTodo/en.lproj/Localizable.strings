@@ -98,6 +98,8 @@
 "completed.stats.time" = "total time";
 "completed.empty" = "No completed tasks";
 "completed.restore" = "Restore";
+"completed.restore.error.title" = "Cannot Restore";
+"completed.restore.error.message" = "Tasks with past due dates cannot be restored. Please edit the task to update the due date first.";
 
 /* Settings */
 "settings.title" = "Settings";
@@ -108,3 +110,19 @@
 "settings.appearance" = "Appearance";
 "settings.about" = "About";
 "settings.version" = "Version";
+
+/* Notifications */
+"settings.notifications" = "Notifications";
+"settings.notifications.enable" = "Daily Reminders";
+"settings.notifications.frequency" = "Reminders per day";
+"settings.notifications.times" = "%d time(s)";
+"settings.notifications.reminder" = "Reminder %d";
+"settings.notifications.footer" = "You'll be notified of incomplete tasks at these times each day";
+"settings.notifications.permission.title" = "Notification Permission";
+"settings.notifications.permission.message" = "Please allow notifications in Settings to receive task reminders";
+"settings.notifications.permission.settings" = "Open Settings";
+"notification.reminder.title" = "Task Reminder";
+"notification.reminder.body" = "You have pending tasks to complete";
+"notification.no.tasks" = "All clear! No tasks for today.";
+"notification.tasks.list" = "You have %d %@:";
+"notification.tasks.more" = "...and %d more";

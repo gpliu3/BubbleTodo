@@ -130,11 +130,11 @@ struct BubbleView: View {
         // Play satisfying pop sound with haptic
         SoundManager.playPopWithHaptic()
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+        withAnimation(.spring(response: 0.9, dampingFraction: 0.6)) {
             isPopping = true
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             onTap()
         }
     }
