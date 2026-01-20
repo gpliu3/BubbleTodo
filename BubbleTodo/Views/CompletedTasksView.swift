@@ -14,7 +14,6 @@ struct CompletedTasksView: View {
     private var completedTasks: [TaskItem]
 
     @State private var selectedPeriod: TimePeriod = .week
-    @State private var showingClearConfirmation = false
     @State private var editingTask: TaskItem?
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
@@ -137,14 +136,12 @@ struct CompletedTasksView: View {
                                     }
                                 }
                                 .swipeActions(edge: .leading) {
-                                    if canRestore(task) {
-                                        Button {
-                                            restoreTask(task)
-                                        } label: {
-                                            Label(L("completed.restore"), systemImage: "arrow.uturn.backward")
-                                        }
-                                        .tint(.blue)
+                                    Button {
+                                        restoreTask(task)
+                                    } label: {
+                                        Label(L("completed.restore"), systemImage: "arrow.uturn.backward")
                                     }
+                                    .tint(.blue)
                                 }
                         }
                     }
@@ -153,33 +150,6 @@ struct CompletedTasksView: View {
         }
         .navigationTitle(L("completed.title"))
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            if !completedTasks.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(role: .destructive) {
-                            showingClearConfirmation = true
-                        } label: {
-                            Label(L("task.delete"), systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-            }
-        }
-        .confirmationDialog(
-            L("task.delete.confirm"),
-            isPresented: $showingClearConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(L("task.delete"), role: .destructive) {
-                clearAllCompleted()
-            }
-            Button(L("task.cancel"), role: .cancel) {}
-        } message: {
-            Text(String(format: L("task.delete.message"), completedTasks.count))
-        }
         .sheet(item: $editingTask) { task in
             EditTaskSheet(task: task)
         }
@@ -266,14 +236,6 @@ struct CompletedTasksView: View {
     private func restoreTask(_ task: TaskItem) {
         withAnimation {
             task.undoComplete()
-        }
-    }
-
-    private func clearAllCompleted() {
-        withAnimation {
-            for task in completedTasks {
-                modelContext.delete(task)
-            }
         }
     }
 }

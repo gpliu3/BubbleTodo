@@ -13,7 +13,7 @@ struct AddTaskSheet: View {
     @State private var title = ""
     @State private var priority = 3
     @State private var effort: Double = 15.0 // Default to 15 minutes
-    @State private var hasDueDate = true // Default to having a due date
+    @State private var hasDueDate = true // Default to having a due date (one-off task)
     @State private var dueDate = Date() // Default to today + current time
     @State private var dueDateType: DueDateType = .before
     @State private var isRecurring = false
@@ -21,6 +21,8 @@ struct AddTaskSheet: View {
     @State private var recurringCount = 1
     @State private var selectedWeekdays: Set<Weekday> = []
     @State private var useSpecificDays = false
+    @State private var hasRecurringTime = false // Whether recurring task has specific time
+    @State private var recurringTime = Date() // Time for recurring task occurrence
     @ObservedObject private var localizationManager = LocalizationManager.shared
 
     private var priorityOptions: [(value: Int, label: String, color: Color)] {
@@ -128,15 +130,15 @@ struct AddTaskSheet: View {
                     Text(L("effort.footer"))
                 }
 
-                // Due Date Section
+                // One-off Task Section
                 Section {
-                    Toggle(L("duedate.toggle"), isOn: $hasDueDate.animation())
+                    Toggle("One off task", isOn: $hasDueDate.animation())
                         .onChange(of: hasDueDate) { _, newValue in
                             if newValue {
-                                // Turning on due date, turn off recurring
+                                // Turning on one-off task, turn off recurring
                                 isRecurring = false
                             } else {
-                                // Turning off due date, must turn on recurring
+                                // Turning off one-off task, must turn on recurring
                                 isRecurring = true
                             }
                         }
@@ -180,8 +182,6 @@ struct AddTaskSheet: View {
                             .datePickerStyle(.compact)
                         }
                     }
-                } header: {
-                    Text(L("duedate.title"))
                 } footer: {
                     if hasDueDate {
                         Text(dueDateType.description)
@@ -225,9 +225,18 @@ struct AddTaskSheet: View {
                         if recurringInterval == .monthly {
                             Stepper(String(format: L("recurring.timespermonth"), recurringCount), value: $recurringCount, in: 1...30)
                         }
+
+                        // Time picker for recurring tasks
+                        Toggle("Set specific time", isOn: $hasRecurringTime.animation())
+
+                        if hasRecurringTime {
+                            DatePicker(
+                                "Time",
+                                selection: $recurringTime,
+                                displayedComponents: .hourAndMinute
+                            )
+                        }
                     }
-                } header: {
-                    Text(L("recurring.title"))
                 } footer: {
                     if isRecurring {
                         Text(L("recurring.footer"))
@@ -277,13 +286,30 @@ struct AddTaskSheet: View {
             ? selectedWeekdays.map { $0.rawValue }
             : []
 
-        // For recurring tasks, set initial dueDate to today
+        // For recurring tasks, set initial dueDate based on hasRecurringTime
         // For one-time tasks, use the user-selected due date
         let taskDueDate: Date?
+        let taskDueDateType: DueDateType
+
         if isRecurring {
-            taskDueDate = Date() // Recurring tasks start today
+            // Recurring tasks
+            if hasRecurringTime {
+                // User specified a time - combine today's date with selected time
+                let calendar = Calendar.current
+                let timeComponents = calendar.dateComponents([.hour, .minute], from: recurringTime)
+                var dateComponents = calendar.dateComponents([.year, .month, .day], from: Date())
+                dateComponents.hour = timeComponents.hour
+                dateComponents.minute = timeComponents.minute
+                taskDueDate = calendar.date(from: dateComponents) ?? Date()
+            } else {
+                // No specific time - start today
+                taskDueDate = Date()
+            }
+            taskDueDateType = .on // Recurring tasks always use "on" type
         } else {
+            // One-off tasks
             taskDueDate = hasDueDate ? dueDate : nil
+            taskDueDateType = dueDateType
         }
 
         let newTask = TaskItem(
@@ -291,7 +317,7 @@ struct AddTaskSheet: View {
             priority: priority,
             effort: effort,
             dueDate: taskDueDate,
-            dueDateType: dueDateType,
+            dueDateType: taskDueDateType,
             isRecurring: isRecurring,
             recurringInterval: isRecurring ? recurringInterval : nil,
             recurringCount: recurringCount,

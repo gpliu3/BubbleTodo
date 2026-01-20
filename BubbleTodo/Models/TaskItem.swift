@@ -21,13 +21,13 @@ enum RecurringInterval: String, Codable, CaseIterable {
 }
 
 enum Weekday: Int, Codable, CaseIterable, Identifiable {
-    case sunday = 1
     case monday = 2
     case tuesday = 3
     case wednesday = 4
     case thursday = 5
     case friday = 6
     case saturday = 7
+    case sunday = 1
 
     var id: Int { rawValue }
 
@@ -201,9 +201,54 @@ final class TaskItem {
     }
 
     /// Sort score for ordering (higher = more urgent, appears at top)
-    /// Combines priority with time-based urgency
+    /// Based on: 1) Priority, 2) Due time today, 3) Time-based urgency
     var sortScore: Double {
-        Double(priority) * effectiveWeight
+        let now = Date()
+        let calendar = Calendar.current
+
+        // Base score from priority (1-5) - scale to 1000-5000
+        var score = Double(priority) * 1000.0
+
+        // Add urgency from due date/time
+        if let dueDate = dueDate {
+            // Check if due today
+            if calendar.isDateInToday(dueDate) {
+                // Due today: add score based on time of day (earlier = higher)
+                let hoursUntilDue = dueDate.timeIntervalSince(now) / 3600
+
+                if hoursUntilDue > 0 {
+                    // Due later today: 0-24 hours away, add 0-500 points (sooner = more points)
+                    score += max(0, 500 - (hoursUntilDue * 20))
+                } else {
+                    // Overdue today: add even more urgency
+                    let hoursOverdue = abs(hoursUntilDue)
+                    score += 500 + (hoursOverdue * 100)
+                }
+            } else if dueDate < now {
+                // Overdue from previous days: very high urgency
+                let hoursOverdue = now.timeIntervalSince(dueDate) / 3600
+                score += 1000 + (hoursOverdue * 50)
+            } else if effectiveDueDateType == .before {
+                // "Before" type with future due date: add urgency as deadline approaches
+                let hoursUntilDue = dueDate.timeIntervalSince(now) / 3600
+
+                if hoursUntilDue < 24 {
+                    // Within 24 hours: 200-400 points
+                    score += 200 + (24 - hoursUntilDue) * 8
+                } else if hoursUntilDue < 72 {
+                    // Within 3 days: 0-200 points
+                    score += (72 - hoursUntilDue) * 2.8
+                }
+            }
+        } else {
+            // No due date: slight boost for older tasks
+            let hoursSinceCreation = now.timeIntervalSince(createdAt) / 3600
+            if hoursSinceCreation > 24 {
+                score += min((hoursSinceCreation - 24) * 2, 100)
+            }
+        }
+
+        return score
     }
 
     /// Whether this task should be visible today
@@ -238,9 +283,10 @@ final class TaskItem {
             }
 
         case .before:
-            // "Before" type: Show from creation until deadline
-            // Show if deadline hasn't passed
-            return now < dueDate
+            // "Before" type: Show from creation until end of deadline day
+            // This ensures task shows all day on the due date, not just until the exact time
+            let endOfDueDateDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: dueDate))!
+            return now < endOfDueDateDay
         }
     }
 

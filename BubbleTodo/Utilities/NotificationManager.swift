@@ -24,6 +24,21 @@ class NotificationManager: ObservableObject {
     @Published var numberOfReminders: Int {
         didSet {
             UserDefaults.standard.set(numberOfReminders, forKey: "numberOfReminders")
+
+            // Update reminderTimes array to match new count
+            let calendar = Calendar.current
+            while reminderTimes.count < numberOfReminders {
+                // Add new reminder times (default to noon, 2pm, 4pm, etc.)
+                let baseHour = 12 + (reminderTimes.count - 2) * 2
+                var newTime = calendar.startOfDay(for: Date())
+                newTime = calendar.date(byAdding: .hour, value: baseHour, to: newTime) ?? newTime
+                reminderTimes.append(newTime)
+            }
+            while reminderTimes.count > numberOfReminders {
+                // Remove excess reminder times
+                reminderTimes.removeLast()
+            }
+
             // Cancel all old notifications when settings change
             if notificationsEnabled {
                 cancelAllNotifications()

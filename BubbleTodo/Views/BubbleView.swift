@@ -13,13 +13,13 @@ struct BubbleView: View {
     @State private var isPopping = false
     @State private var bobOffset: CGFloat = 0
 
-    // Calculate bubble diameter based on task's bubble size (sqrt-scaled effort)
-    // 1min → ~70pt, 5min → ~87pt, 15min → ~107pt, 30min → ~125pt, 60min → ~145pt, 120min → ~160pt
+    // Calculate bubble diameter based on task's bubble size (effort-only, sqrt-scaled)
+    // 1min → ~60pt, 5min → ~80pt, 15min → ~107pt, 30min → ~135pt, 60min → ~155pt, 120min → ~180pt
     private var diameter: CGFloat {
-        let baseSize: CGFloat = 62
-        let scaleFactor: CGFloat = 9
+        let baseSize: CGFloat = 50
+        let scaleFactor: CGFloat = 11.5
         let size = baseSize + CGFloat(task.bubbleSize) * scaleFactor
-        return min(max(size, 65), 165)
+        return min(max(size, 60), 180)
     }
 
     private var bubbleColor: Color {
@@ -69,17 +69,17 @@ struct BubbleView: View {
 
             // Content: Title and time
             VStack(spacing: 2) {
-                // Task title
+                // Task title - scales with bubble size
                 Text(task.title)
-                    .font(.system(size: min(diameter / 5.5, 15), weight: .medium))
+                    .font(.system(size: min(diameter / 4.5, 24), weight: .medium))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .frame(width: diameter - 20)
 
-                // Time label
+                // Time label - fixed size
                 Text(task.effortLabel)
-                    .font(.system(size: min(diameter / 7, 11), weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white.opacity(0.85))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
