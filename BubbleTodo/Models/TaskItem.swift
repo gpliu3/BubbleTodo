@@ -20,6 +20,40 @@ enum RecurringInterval: String, Codable, CaseIterable {
     }
 }
 
+enum MonthlyPattern: String, Codable, CaseIterable {
+    case timesPerMonth = "TimesPerMonth"  // X times per month (no specific day)
+    case dayOfMonth = "DayOfMonth"        // Specific day (e.g., 5th, 15th, last day)
+    case nthWeekday = "NthWeekday"        // Nth weekday (e.g., 3rd Wednesday)
+
+    var displayName: String {
+        switch self {
+        case .timesPerMonth: return L("monthly.pattern.times")
+        case .dayOfMonth: return L("monthly.pattern.day")
+        case .nthWeekday: return L("monthly.pattern.weekday")
+        }
+    }
+}
+
+enum WeekNumber: Int, Codable, CaseIterable, Identifiable {
+    case first = 1
+    case second = 2
+    case third = 3
+    case fourth = 4
+    case last = 5
+
+    var id: Int { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .first: return L("weeknumber.first")
+        case .second: return L("weeknumber.second")
+        case .third: return L("weeknumber.third")
+        case .fourth: return L("weeknumber.fourth")
+        case .last: return L("weeknumber.last")
+        }
+    }
+}
+
 enum Weekday: Int, Codable, CaseIterable, Identifiable {
     case monday = 2
     case tuesday = 3
@@ -88,9 +122,20 @@ final class TaskItem {
     var recurringInterval: RecurringInterval?
     var recurringCount: Int = 1 // how many times per period (e.g., 3 times per week)
     var weeklyDays: [Int] = [] // specific days for weekly recurrence (1=Sun, 2=Mon, etc.)
+    var monthlyPattern: MonthlyPattern? // pattern type for monthly recurrence
+    var monthlyDayOfMonth: Int = 1 // day of month (1-31, or 0 for "last day")
+    var monthlyWeekNumber: Int = 1 // which week (1-4, or 5 for "last")
+    var monthlyWeekday: Int = 2 // weekday for nth pattern (1=Sun, 2=Mon, etc.)
     var createdAt: Date = Date()
     var completedAt: Date?
     var isCompleted: Bool = false
+
+    // Shared calendar for performance (avoid creating new Calendar instances)
+    private static let sharedCalendar: Calendar = {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        return calendar
+    }()
 
     init(
         id: UUID = UUID(),
@@ -104,6 +149,10 @@ final class TaskItem {
         recurringInterval: RecurringInterval? = nil,
         recurringCount: Int = 1,
         weeklyDays: [Int] = [],
+        monthlyPattern: MonthlyPattern? = nil,
+        monthlyDayOfMonth: Int = 1,
+        monthlyWeekNumber: Int = 1,
+        monthlyWeekday: Int = 2,
         createdAt: Date = Date(),
         completedAt: Date? = nil,
         isCompleted: Bool = false
@@ -119,6 +168,10 @@ final class TaskItem {
         self.recurringInterval = recurringInterval
         self.recurringCount = recurringCount
         self.weeklyDays = weeklyDays
+        self.monthlyPattern = monthlyPattern
+        self.monthlyDayOfMonth = monthlyDayOfMonth
+        self.monthlyWeekNumber = monthlyWeekNumber
+        self.monthlyWeekday = monthlyWeekday
         self.createdAt = createdAt
         self.completedAt = completedAt
         self.isCompleted = isCompleted
@@ -188,23 +241,26 @@ final class TaskItem {
         }
     }
 
-    /// Standard effort options in minutes
+    /// Standard effort options in minutes (computed for localization support)
     static var effortOptions: [(value: Double, label: String)] {
-        [
-            (1, L("effort.1min")),
-            (5, L("effort.5min")),
-            (15, L("effort.15min")),
-            (30, L("effort.30min")),
-            (60, L("effort.1hour")),
-            (120, L("effort.2hours"))
-        ]
+        effortValues.map { ($0.value, L($0.key)) }
     }
+
+    /// Static effort values (non-localized keys)
+    private static let effortValues: [(value: Double, key: String)] = [
+        (1, "effort.1min"),
+        (5, "effort.5min"),
+        (15, "effort.15min"),
+        (30, "effort.30min"),
+        (60, "effort.1hour"),
+        (120, "effort.2hours")
+    ]
 
     /// Sort score for ordering (higher = more urgent, appears at top)
     /// Based on: 1) Priority, 2) Due time today, 3) Time-based urgency
     var sortScore: Double {
         let now = Date()
-        let calendar = Calendar.current
+        let calendar = Self.sharedCalendar
 
         // Base score from priority (1-5) - scale to 1000-5000
         var score = Double(priority) * 1000.0
@@ -259,10 +315,8 @@ final class TaskItem {
         // No due date = always show
         guard let dueDate = dueDate else { return true }
 
-        let calendar = Calendar.current
+        let calendar = Self.sharedCalendar
         let now = Date()
-        let startOfToday = calendar.startOfDay(for: now)
-        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
         // Recurring tasks always use .on behavior (only show on scheduled day)
         let typeToUse = isRecurring ? DueDateType.on : effectiveDueDateType
@@ -299,7 +353,7 @@ final class TaskItem {
     /// Check if task is due today
     var isDueToday: Bool {
         guard let dueDate = dueDate else { return false }
-        return Calendar.current.isDateInToday(dueDate)
+        return Self.sharedCalendar.isDateInToday(dueDate)
     }
 
     /// Priority label for display
@@ -344,9 +398,7 @@ final class TaskItem {
     func createNextRecurringTask() -> TaskItem? {
         guard isRecurring, let interval = recurringInterval else { return nil }
 
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2 // Monday = 1st day of week
-
+        let calendar = Self.sharedCalendar // Already configured with Monday as first weekday
         let now = Date()
         var nextDueDate: Date
 
@@ -368,12 +420,24 @@ final class TaskItem {
             }
 
         case .monthly:
-            if recurringCount > 1 {
-                // X times per month - space evenly from 1st of month
-                nextDueDate = findNextMonthlySlot(from: now, count: recurringCount, calendar: calendar) ?? now
-            } else {
-                // Once per month - 1st of next month
-                nextDueDate = findFirstOfNextMonth(from: now, calendar: calendar) ?? now
+            let pattern = monthlyPattern ?? .timesPerMonth
+            switch pattern {
+            case .dayOfMonth:
+                // Specific day of month (e.g., 5th, 15th, or last day)
+                nextDueDate = findNextDayOfMonth(from: now, day: monthlyDayOfMonth, calendar: calendar) ?? now
+
+            case .nthWeekday:
+                // Nth weekday of month (e.g., 3rd Wednesday)
+                nextDueDate = findNextNthWeekday(from: now, weekNumber: monthlyWeekNumber, weekday: monthlyWeekday, calendar: calendar) ?? now
+
+            case .timesPerMonth:
+                if recurringCount > 1 {
+                    // X times per month - space evenly from 1st of month
+                    nextDueDate = findNextMonthlySlot(from: now, count: recurringCount, calendar: calendar) ?? now
+                } else {
+                    // Once per month - 1st of next month
+                    nextDueDate = findFirstOfNextMonth(from: now, calendar: calendar) ?? now
+                }
             }
         }
 
@@ -387,7 +451,11 @@ final class TaskItem {
             isRecurring: true,
             recurringInterval: interval,
             recurringCount: recurringCount,
-            weeklyDays: weeklyDays
+            weeklyDays: weeklyDays,
+            monthlyPattern: monthlyPattern,
+            monthlyDayOfMonth: monthlyDayOfMonth,
+            monthlyWeekNumber: monthlyWeekNumber,
+            monthlyWeekday: monthlyWeekday
         )
     }
 
@@ -430,15 +498,8 @@ final class TaskItem {
     private func findNextWeeklySlot(from date: Date, count: Int, calendar: Calendar) -> Date? {
         let dayInterval = 7 / count // e.g., 3x/week = every 2-3 days
 
-        // Get current day of week (Mon=1, Sun=7)
-        let currentWeekday = calendar.component(.weekday, from: date)
-        let mondayOffset = (2 - currentWeekday + 7) % 7 // Days to Monday
-
-        // If today is not a slot day, find next slot
-        var nextDate = calendar.date(byAdding: .day, value: 1, to: date) ?? date
-
         // Simple approach: add dayInterval days from today
-        nextDate = calendar.date(byAdding: .day, value: dayInterval, to: date) ?? date
+        var nextDate = calendar.date(byAdding: .day, value: dayInterval, to: date) ?? date
 
         // If we've gone past Sunday, wrap to next Monday
         let nextWeekday = calendar.component(.weekday, from: nextDate)
@@ -460,7 +521,6 @@ final class TaskItem {
     private func findNextMonthlySlot(from date: Date, count: Int, calendar: Calendar) -> Date? {
         let dayInterval = 30 / count // e.g., 3x/month = every ~10 days
 
-        let currentDay = calendar.component(.day, from: date)
         var nextDate = calendar.date(byAdding: .day, value: dayInterval, to: date) ?? date
 
         // Check if we've crossed into next month
@@ -474,6 +534,139 @@ final class TaskItem {
         }
 
         return nextDate
+    }
+
+    /// Find next occurrence of a specific day of month (e.g., 5th, 15th)
+    /// Pass day=0 for "last day of month"
+    private func findNextDayOfMonth(from date: Date, day: Int, calendar: Calendar) -> Date? {
+        let currentDay = calendar.component(.day, from: date)
+        let currentMonth = calendar.component(.month, from: date)
+        let currentYear = calendar.component(.year, from: date)
+
+        // Handle "last day of month" (day == 0)
+        if day == 0 {
+            // Find last day of current month
+            if let lastDayThisMonth = lastDayOfMonth(year: currentYear, month: currentMonth, calendar: calendar),
+               lastDayThisMonth > currentDay {
+                // Last day is still ahead this month
+                var components = calendar.dateComponents([.year, .month], from: date)
+                components.day = lastDayThisMonth
+                return calendar.date(from: components)
+            } else {
+                // Move to last day of next month
+                let nextMonthDate = calendar.date(byAdding: .month, value: 1, to: date) ?? date
+                let nextMonth = calendar.component(.month, from: nextMonthDate)
+                let nextYear = calendar.component(.year, from: nextMonthDate)
+                if let lastDayNextMonth = lastDayOfMonth(year: nextYear, month: nextMonth, calendar: calendar) {
+                    var components = DateComponents()
+                    components.year = nextYear
+                    components.month = nextMonth
+                    components.day = lastDayNextMonth
+                    return calendar.date(from: components)
+                }
+            }
+            return nil
+        }
+
+        // Regular day of month (1-31)
+        let targetDay = min(day, 28) // Clamp to 28 for safety, handle edge cases below
+
+        if targetDay > currentDay {
+            // Target day is still ahead this month
+            let daysInMonth = lastDayOfMonth(year: currentYear, month: currentMonth, calendar: calendar) ?? 28
+            var components = calendar.dateComponents([.year, .month], from: date)
+            components.day = min(day, daysInMonth)
+            return calendar.date(from: components)
+        } else {
+            // Target day has passed, move to next month
+            let nextMonthDate = calendar.date(byAdding: .month, value: 1, to: date) ?? date
+            let nextMonth = calendar.component(.month, from: nextMonthDate)
+            let nextYear = calendar.component(.year, from: nextMonthDate)
+            let daysInNextMonth = lastDayOfMonth(year: nextYear, month: nextMonth, calendar: calendar) ?? 28
+
+            var components = DateComponents()
+            components.year = nextYear
+            components.month = nextMonth
+            components.day = min(day, daysInNextMonth)
+            return calendar.date(from: components)
+        }
+    }
+
+    /// Find next occurrence of nth weekday of month (e.g., 3rd Wednesday)
+    /// weekNumber: 1-4 for specific week, 5 for "last"
+    /// weekday: 1=Sunday, 2=Monday, etc.
+    private func findNextNthWeekday(from date: Date, weekNumber: Int, weekday: Int, calendar: Calendar) -> Date? {
+        let currentMonth = calendar.component(.month, from: date)
+        let currentYear = calendar.component(.year, from: date)
+
+        // Try this month first
+        if let thisMonthDate = nthWeekdayOfMonth(year: currentYear, month: currentMonth, weekNumber: weekNumber, weekday: weekday, calendar: calendar),
+           thisMonthDate > date {
+            return thisMonthDate
+        }
+
+        // Move to next month
+        let nextMonthDate = calendar.date(byAdding: .month, value: 1, to: date) ?? date
+        let nextMonth = calendar.component(.month, from: nextMonthDate)
+        let nextYear = calendar.component(.year, from: nextMonthDate)
+
+        return nthWeekdayOfMonth(year: nextYear, month: nextMonth, weekNumber: weekNumber, weekday: weekday, calendar: calendar)
+    }
+
+    /// Helper: Get the last day of a given month
+    private func lastDayOfMonth(year: Int, month: Int, calendar: Calendar) -> Int? {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = 1
+        guard let firstDay = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: firstDay) else {
+            return nil
+        }
+        return range.count
+    }
+
+    /// Helper: Get the nth weekday of a given month
+    /// weekNumber: 1-4 for specific week, 5 for "last"
+    private func nthWeekdayOfMonth(year: Int, month: Int, weekNumber: Int, weekday: Int, calendar: Calendar) -> Date? {
+        if weekNumber == 5 {
+            // "Last" weekday of the month
+            return lastWeekdayOfMonth(year: year, month: month, weekday: weekday, calendar: calendar)
+        }
+
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.weekday = weekday
+        components.weekdayOrdinal = weekNumber // 1st, 2nd, 3rd, 4th
+
+        return calendar.date(from: components)
+    }
+
+    /// Helper: Get the last occurrence of a weekday in a given month
+    private func lastWeekdayOfMonth(year: Int, month: Int, weekday: Int, calendar: Calendar) -> Date? {
+        // Start from last day of month and work backwards
+        guard let daysInMonth = lastDayOfMonth(year: year, month: month, calendar: calendar) else {
+            return nil
+        }
+
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = daysInMonth
+
+        guard let lastDay = calendar.date(from: components) else { return nil }
+
+        // Find the last occurrence of the weekday
+        for offset in 0..<7 {
+            guard let checkDate = calendar.date(byAdding: .day, value: -offset, to: lastDay) else { continue }
+            let checkWeekday = calendar.component(.weekday, from: checkDate)
+            if checkWeekday == weekday {
+                return checkDate
+            }
+        }
+
+        return nil
     }
 
     /// Summary of recurring schedule for display
@@ -492,10 +685,43 @@ final class TaskItem {
             }
             return "Every week"
         case .monthly:
-            if recurringCount > 1 {
-                return "\(recurringCount)x per month"
+            let pattern = monthlyPattern ?? .timesPerMonth
+            switch pattern {
+            case .dayOfMonth:
+                if monthlyDayOfMonth == 0 {
+                    return L("monthly.lastday")
+                } else {
+                    return String(format: L("monthly.day.format"), ordinalSuffix(for: monthlyDayOfMonth))
+                }
+            case .nthWeekday:
+                let weekNumberName = WeekNumber(rawValue: monthlyWeekNumber)?.displayName ?? ""
+                let weekdayName = Weekday(rawValue: monthlyWeekday)?.fullName ?? ""
+                return "\(weekNumberName) \(weekdayName)"
+            case .timesPerMonth:
+                if recurringCount > 1 {
+                    return "\(recurringCount)x per month"
+                }
+                return "Every month"
             }
-            return "Every month"
         }
+    }
+
+    /// Helper: Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
+    private func ordinalSuffix(for number: Int) -> String {
+        let suffix: String
+        let ones = number % 10
+        let tens = (number / 10) % 10
+
+        if tens == 1 {
+            suffix = "th"
+        } else {
+            switch ones {
+            case 1: suffix = "st"
+            case 2: suffix = "nd"
+            case 3: suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        return "\(number)\(suffix)"
     }
 }

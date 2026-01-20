@@ -10,14 +10,30 @@ import UIKit
 enum SoundManager {
     private static var popPlayer: AVAudioPlayer?
     private static var successPlayer: AVAudioPlayer?
+    private static var isAudioSessionConfigured = false
 
-    /// Configure audio session to allow sounds even in silent mode
+    // Pre-prepared haptic generators for better performance
+    private static let heavyHaptic: UIImpactFeedbackGenerator = {
+        let generator = UIImpactFeedbackGenerator(style: .heavy)
+        generator.prepare()
+        return generator
+    }()
+
+    private static let successHaptic: UINotificationFeedbackGenerator = {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        return generator
+    }()
+
+    /// Configure audio session to allow sounds even in silent mode (called once)
     private static func configureAudioSession() {
+        guard !isAudioSessionConfigured else { return }
         do {
             // Use .playback with .mixWithOthers to play sounds even in silent mode
             // while still allowing other audio to play
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
+            isAudioSessionConfigured = true
         } catch {
             // Silently fail if audio session can't be configured
         }
@@ -68,10 +84,10 @@ enum SoundManager {
             AudioServicesPlaySystemSound(1104)
         }
 
-        // Haptic feedback
+        // Haptic feedback using pre-prepared generator
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
-            impactFeedback.impactOccurred()
+            heavyHaptic.impactOccurred()
+            heavyHaptic.prepare() // Prepare for next use
         }
     }
 
@@ -92,7 +108,7 @@ enum SoundManager {
             AudioServicesPlaySystemSound(1025)
         }
 
-        let notificationFeedback = UINotificationFeedbackGenerator()
-        notificationFeedback.notificationOccurred(.success)
+        successHaptic.notificationOccurred(.success)
+        successHaptic.prepare() // Prepare for next use
     }
 }

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -45,6 +46,10 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                // Clear badge when app becomes active
+                Task {
+                    try? await UNUserNotificationCenter.current().setBadgeCount(0)
+                }
                 // Update notifications with current tasks when app becomes active
                 updateNotifications()
             }

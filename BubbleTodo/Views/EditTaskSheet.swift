@@ -23,6 +23,10 @@ struct EditTaskSheet: View {
     @State private var recurringCount: Int
     @State private var selectedWeekdays: Set<Weekday>
     @State private var useSpecificDays: Bool
+    @State private var monthlyPattern: MonthlyPattern
+    @State private var monthlyDayOfMonth: Int
+    @State private var monthlyWeekNumber: WeekNumber
+    @State private var monthlyWeekday: Weekday
     @State private var hasRecurringTime: Bool
     @State private var recurringTime: Date
     @State private var showingDeleteConfirmation = false
@@ -38,6 +42,38 @@ struct EditTaskSheet: View {
         ]
     }
 
+    /// Explanation of why the urgency weight increased
+    private var urgencyExplanation: String {
+        let now = Date()
+
+        if let dueDate = task.dueDate {
+            if now > dueDate {
+                // Overdue
+                let hoursOverdue = now.timeIntervalSince(dueDate) / 3600
+                if hoursOverdue < 24 {
+                    return L("info.urgency.overdue.hours")
+                } else {
+                    let days = Int(hoursOverdue / 24)
+                    return String(format: L("info.urgency.overdue.days"), days)
+                }
+            } else if task.effectiveDueDateType == .before {
+                let hoursUntilDue = dueDate.timeIntervalSince(now) / 3600
+                if hoursUntilDue < 24 {
+                    return L("info.urgency.due.today")
+                } else if hoursUntilDue < 72 {
+                    return L("info.urgency.due.soon")
+                }
+            }
+        } else {
+            // No due date - age-based
+            let hoursSinceCreation = now.timeIntervalSince(task.createdAt) / 3600
+            let days = Int(hoursSinceCreation / 24)
+            return String(format: L("info.urgency.age"), days)
+        }
+
+        return ""
+    }
+
     init(task: TaskItem) {
         self.task = task
         _title = State(initialValue: task.title)
@@ -51,6 +87,10 @@ struct EditTaskSheet: View {
         _recurringCount = State(initialValue: task.recurringCount)
         _selectedWeekdays = State(initialValue: Set(task.weeklyDays.compactMap { Weekday(rawValue: $0) }))
         _useSpecificDays = State(initialValue: !task.weeklyDays.isEmpty)
+        _monthlyPattern = State(initialValue: task.monthlyPattern ?? .timesPerMonth)
+        _monthlyDayOfMonth = State(initialValue: task.monthlyDayOfMonth)
+        _monthlyWeekNumber = State(initialValue: WeekNumber(rawValue: task.monthlyWeekNumber) ?? .first)
+        _monthlyWeekday = State(initialValue: Weekday(rawValue: task.monthlyWeekday) ?? .monday)
         _hasRecurringTime = State(initialValue: task.isRecurring && task.dueDate != nil)
         _recurringTime = State(initialValue: task.dueDate ?? Date())
     }
@@ -93,12 +133,15 @@ struct EditTaskSheet: View {
                                         priority = level
                                     }
                                 }
+                                .accessibilityLabel(String(format: L("accessibility.priority.indicator"), level))
+                                .accessibilityAddTraits(level == priority ? [.isButton, .isSelected] : .isButton)
                         }
                         Spacer()
                         Text(priorityLabel(for: priority))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    .accessibilityElement(children: .contain)
                 } header: {
                     Text(L("priority.title"))
                 }
@@ -121,6 +164,8 @@ struct EditTaskSheet: View {
                                         .cornerRadius(8)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(option.label)
+                                .accessibilityAddTraits(effort == option.value ? [.isButton, .isSelected] : .isButton)
                             }
                         }
 
@@ -139,6 +184,8 @@ struct EditTaskSheet: View {
                                         .cornerRadius(8)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(option.label)
+                                .accessibilityAddTraits(effort == option.value ? [.isButton, .isSelected] : .isButton)
                             }
                         }
                     }
@@ -148,123 +195,144 @@ struct EditTaskSheet: View {
                     Text(L("effort.footer"))
                 }
 
-                // One-off Task Section
+                // Task Type Section - Two bordered boxes
                 Section {
-                    Toggle("One off task", isOn: $hasDueDate.animation())
-                        .onChange(of: hasDueDate) { _, newValue in
-                            if newValue {
-                                // Turning on one-off task, turn off recurring
-                                isRecurring = false
-                            } else {
-                                // Turning off one-off task, must turn on recurring
-                                isRecurring = true
-                            }
-                        }
-
-                    if hasDueDate {
-                        HStack(spacing: 8) {
-                            // Tappable type selector
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    dueDateType = dueDateType == .on ? .before : .on
-                                }
-                            } label: {
-                                HStack(spacing: 3) {
-                                    Text(dueDateType.displayName)
-                                        .font(.subheadline)
-                                        .foregroundColor(.primary)
-                                        .fontWeight(.medium)
-                                        .lineLimit(1)
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                        .font(.caption2)
-                                        .foregroundColor(.blue)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(dueDateType == .on ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .fixedSize()
-
-                            Spacer()
-
-                            DatePicker(
-                                "",
-                                selection: $dueDate,
-                                displayedComponents: [.date, .hourAndMinute]
-                            )
-                            .labelsHidden()
-                            .datePickerStyle(.compact)
-                        }
-                    }
-                } footer: {
-                    if hasDueDate {
-                        Text(dueDateType.description)
-                    } else if isRecurring {
-                        Text(L("duedate.recurring.disabled"))
-                    }
-                }
-
-                // Recurring Section
-                Section {
-                    Toggle(L("recurring.toggle"), isOn: $isRecurring.animation())
-                        .onChange(of: isRecurring) { _, newValue in
-                            if newValue {
-                                // Turning on recurring, turn off due date
-                                hasDueDate = false
-                            } else {
-                                // Turning off recurring, must turn on due date
+                    VStack(spacing: 12) {
+                        // One-off Task Box
+                        TaskTypeBox(
+                            isSelected: hasDueDate,
+                            title: L("task.oneoff"),
+                            icon: "calendar",
+                            accentColor: .blue
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
                                 hasDueDate = true
+                                isRecurring = false
+                            }
+                        } content: {
+                            if hasDueDate {
+                                VStack(spacing: 12) {
+                                    // Date type selector
+                                    HStack(spacing: 8) {
+                                        ForEach([DueDateType.before, DueDateType.on], id: \.self) { type in
+                                            Button {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    dueDateType = type
+                                                }
+                                            } label: {
+                                                Text(type.displayName)
+                                                    .font(.subheadline.weight(.medium))
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 8)
+                                                    .frame(maxWidth: .infinity)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 8)
+                                                            .fill(dueDateType == type ?
+                                                                  (type == .on ? Color.green : Color.orange) :
+                                                                    Color.gray.opacity(0.15))
+                                                    )
+                                                    .foregroundColor(dueDateType == type ? .white : .primary)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+
+                                    // Date picker
+                                    DatePicker(
+                                        L("duedate.title"),
+                                        selection: $dueDate,
+                                        displayedComponents: [.date, .hourAndMinute]
+                                    )
+                                    .datePickerStyle(.compact)
+
+                                    // Description
+                                    Text(dueDateType.description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .padding(.top, 8)
                             }
                         }
 
-                    if isRecurring {
-                        Picker(L("recurring.repeat"), selection: $recurringInterval) {
-                            ForEach(RecurringInterval.allCases, id: \.self) { interval in
-                                Text(interval.displayName).tag(interval)
+                        // Recurring Task Box
+                        TaskTypeBox(
+                            isSelected: isRecurring,
+                            title: L("recurring.toggle"),
+                            icon: "repeat",
+                            accentColor: .purple
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isRecurring = true
+                                hasDueDate = false
                             }
-                        }
+                        } content: {
+                            if isRecurring {
+                                VStack(spacing: 12) {
+                                    // Repeat interval picker
+                                    Picker(L("recurring.repeat"), selection: $recurringInterval) {
+                                        ForEach(RecurringInterval.allCases, id: \.self) { interval in
+                                            Text(interval.displayName).tag(interval)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
 
-                        // Weekly options
-                        if recurringInterval == .weekly {
-                            Toggle(L("recurring.specificdays"), isOn: $useSpecificDays.animation())
+                                    // Weekly options
+                                    if recurringInterval == .weekly {
+                                        Toggle(L("recurring.specificdays"), isOn: $useSpecificDays.animation())
+                                            .font(.subheadline)
 
-                            if useSpecificDays {
-                                WeekdayPicker(selectedDays: $selectedWeekdays)
-                            } else {
-                                Stepper(String(format: L("recurring.timesperweek"), recurringCount), value: $recurringCount, in: 1...7)
+                                        if useSpecificDays {
+                                            WeekdayPicker(selectedDays: $selectedWeekdays)
+                                        } else {
+                                            Stepper(String(format: L("recurring.timesperweek"), recurringCount), value: $recurringCount, in: 1...7)
+                                                .font(.subheadline)
+                                        }
+                                    }
+
+                                    // Monthly options
+                                    if recurringInterval == .monthly {
+                                        MonthlyPatternPicker(
+                                            pattern: $monthlyPattern,
+                                            dayOfMonth: $monthlyDayOfMonth,
+                                            weekNumber: $monthlyWeekNumber,
+                                            weekday: $monthlyWeekday,
+                                            timesPerMonth: $recurringCount
+                                        )
+                                    }
+
+                                    Divider()
+
+                                    // Time picker for recurring tasks
+                                    Toggle(L("task.specifictime"), isOn: $hasRecurringTime.animation())
+                                        .font(.subheadline)
+
+                                    if hasRecurringTime {
+                                        DatePicker(
+                                            L("task.time"),
+                                            selection: $recurringTime,
+                                            displayedComponents: .hourAndMinute
+                                        )
+                                        .font(.subheadline)
+                                    }
+
+                                    // Description
+                                    Text(L("recurring.footer"))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .padding(.top, 8)
                             }
-                        }
-
-                        // Monthly options
-                        if recurringInterval == .monthly {
-                            Stepper(String(format: L("recurring.timespermonth"), recurringCount), value: $recurringCount, in: 1...30)
-                        }
-
-                        // Time picker for recurring tasks
-                        Toggle("Set specific time", isOn: $hasRecurringTime.animation())
-
-                        if hasRecurringTime {
-                            DatePicker(
-                                "Time",
-                                selection: $recurringTime,
-                                displayedComponents: .hourAndMinute
-                            )
                         }
                     }
-                } footer: {
-                    if isRecurring {
-                        Text(L("recurring.footer"))
-                    } else if hasDueDate {
-                        Text(L("recurring.duedate.disabled"))
-                    }
+                } header: {
+                    Text(L("task.schedule"))
+                        .textCase(nil)
                 }
 
                 // Task Info Section
-                Section(header: Text(L("info.title"))) {
+                Section {
                     LabeledContent(L("info.created")) {
                         Text(task.createdAt.formatted(.dateTime.month().day().hour().minute()))
                             .font(.subheadline)
@@ -272,11 +340,24 @@ struct EditTaskSheet: View {
                     }
 
                     if task.effectiveWeight > 1.0 {
-                        LabeledContent(L("info.urgency")) {
-                            Text(String(format: "%.1fx", task.effectiveWeight))
-                                .font(.subheadline)
-                                .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 8) {
+                            LabeledContent(L("info.urgency")) {
+                                Text(String(format: "%.1fx", task.effectiveWeight))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(.orange)
+                            }
+
+                            // Explanation of why urgency increased
+                            Text(urgencyExplanation)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
+                    }
+                } header: {
+                    Text(L("info.title"))
+                } footer: {
+                    if task.effectiveWeight > 1.0 {
+                        Text(L("info.urgency.footer"))
                     }
                 }
 
@@ -381,6 +462,10 @@ struct EditTaskSheet: View {
         task.recurringInterval = isRecurring ? recurringInterval : nil
         task.recurringCount = recurringCount
         task.weeklyDays = weeklyDays
+        task.monthlyPattern = isRecurring && recurringInterval == .monthly ? monthlyPattern : nil
+        task.monthlyDayOfMonth = monthlyDayOfMonth
+        task.monthlyWeekNumber = monthlyWeekNumber.rawValue
+        task.monthlyWeekday = monthlyWeekday.rawValue
 
         // Play subtle success sound
         SoundManager.playSuccessWithHaptic()

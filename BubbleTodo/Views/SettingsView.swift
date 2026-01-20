@@ -10,6 +10,13 @@ struct SettingsView: View {
     @ObservedObject private var notificationManager = NotificationManager.shared
     @State private var showingPermissionAlert = false
 
+    /// App version from bundle
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -66,20 +73,52 @@ struct SettingsView: View {
                 Section {
                     Picker(L("settings.language"), selection: $localizationManager.currentLanguage) {
                         Text(L("settings.language.system")).tag("system")
-                        Text(L("settings.language.english")).tag("en")
-                        Text(L("settings.language.chinese")).tag("zh-Hans")
+                        Text("English").tag("en")
+                        Text("简体中文").tag("zh-Hans")
+                        Text("繁體中文").tag("zh-Hant")
+                        Text("日本語").tag("ja")
+                        Text("한국어").tag("ko")
+                        Text("Español").tag("es")
+                        Text("Français").tag("fr")
+                        Text("Deutsch").tag("de")
+                        Text("Português (Brasil)").tag("pt-BR")
                     }
                 } header: {
                     Text(L("settings.appearance"))
                 }
 
+                // About Section
                 Section {
                     HStack {
                         Text(L("settings.version"))
                         Spacer()
-                        Text("1.0.0")
+                        Text(appVersion)
                             .foregroundColor(.secondary)
                     }
+
+                    // Privacy Policy link
+                    Link(destination: URL(string: "https://github.com/gengpuliu/BubbleTodo/blob/main/PRIVACY.md")!) {
+                        HStack {
+                            Text(L("settings.privacy"))
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+
+                    // Terms of Service link
+                    Link(destination: URL(string: "https://github.com/gengpuliu/BubbleTodo/blob/main/TERMS.md")!) {
+                        HStack {
+                            Text(L("settings.terms"))
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
                 } header: {
                     Text(L("settings.about"))
                 }

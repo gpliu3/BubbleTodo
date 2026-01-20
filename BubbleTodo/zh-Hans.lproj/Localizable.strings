@@ -20,6 +20,7 @@
 "task.delete" = "删除任务";
 "task.delete.confirm" = "删除此任务？";
 "task.delete.message" = "此操作无法撤销。";
+"task.schedule" = "计划";
 
 /* Priority */
 "priority.title" = "优先级";
@@ -66,6 +67,26 @@
 "recurring.everyweek" = "每周";
 "recurring.everymonth" = "每月";
 
+/* Monthly Patterns */
+"monthly.pattern.title" = "重复方式";
+"monthly.pattern.times" = "每月X次";
+"monthly.pattern.day" = "指定日期";
+"monthly.pattern.weekday" = "指定星期";
+"monthly.day.select" = "选择日期";
+"monthly.day.format" = "每月%@";
+"monthly.lastday" = "每月最后一天";
+"monthly.lastday.short" = "最后";
+"monthly.weeknumber" = "第几周";
+"monthly.weekday" = "星期几";
+"monthly.summary" = "每月%@个%@";
+
+/* Week Numbers */
+"weeknumber.first" = "第一";
+"weeknumber.second" = "第二";
+"weeknumber.third" = "第三";
+"weeknumber.fourth" = "第四";
+"weeknumber.last" = "最后";
+
 /* Weekdays */
 "weekday.sun.short" = "周日";
 "weekday.mon.short" = "周一";
@@ -87,6 +108,12 @@
 "info.created" = "创建时间";
 "info.effort" = "工作量";
 "info.urgency" = "紧急权重";
+"info.urgency.footer" = "更高的紧急程度会让任务显示在更靠前的位置";
+"info.urgency.overdue.hours" = "任务已逾期";
+"info.urgency.overdue.days" = "任务已逾期 %d 天";
+"info.urgency.due.today" = "24小时内到期";
+"info.urgency.due.soon" = "3天内到期";
+"info.urgency.age" = "任务已等待 %d 天";
 
 /* Completed Tasks */
 "completed.title" = "已完成任务";
@@ -126,3 +153,24 @@
 "notification.no.tasks" = "全部完成！今天没有任务。";
 "notification.tasks.list" = "您有 %d %@：";
 "notification.tasks.more" = "...还有 %d 个";
+
+/* One-off Task */
+"task.oneoff" = "单次任务";
+"task.specifictime" = "设置具体时间";
+"task.time" = "时间";
+
+/* Stats */
+"completed.stats.avg" = "平均：%@";
+
+/* About/Legal */
+"settings.privacy" = "隐私政策";
+"settings.terms" = "服务条款";
+"settings.support" = "支持";
+
+/* Accessibility */
+"accessibility.add.task" = "添加新任务";
+"accessibility.bubble" = "%@，优先级%@，需要%@";
+"accessibility.bubble.hint" = "点击完成，长按编辑";
+"accessibility.priority.indicator" = "优先级 %d，共 5 级";
+"accessibility.effort.button" = "%@，点击选择";
+"accessibility.weekday.button" = "%@，%@";

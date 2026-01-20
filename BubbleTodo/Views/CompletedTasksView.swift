@@ -189,7 +189,7 @@ struct CompletedTasksView: View {
 
             if !filteredTasks.isEmpty {
                 let avgMinutes = totalEffort / Double(filteredTasks.count)
-                Text("Avg: \(formatTotalTime(avgMinutes))")
+                Text(String(format: L("completed.stats.avg"), formatTotalTime(avgMinutes)))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -329,6 +329,8 @@ struct CompletedTaskRow: View {
                 .cornerRadius(4)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(task.title), \(task.priorityLabel), \(task.effortLabel)")
     }
 }
 

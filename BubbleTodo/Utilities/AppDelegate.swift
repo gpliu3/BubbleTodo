@@ -25,7 +25,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Clear badge when app becomes active
-        application.applicationIconBadgeNumber = 0
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(0)
+        }
     }
 
     // Handle notification when app is in foreground

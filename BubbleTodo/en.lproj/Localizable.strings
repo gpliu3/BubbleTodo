@@ -20,6 +20,7 @@
 "task.delete" = "Delete Task";
 "task.delete.confirm" = "Delete this task?";
 "task.delete.message" = "This action cannot be undone.";
+"task.schedule" = "Schedule";
 
 /* Priority */
 "priority.title" = "Priority";
@@ -66,6 +67,26 @@
 "recurring.everyweek" = "Every week";
 "recurring.everymonth" = "Every month";
 
+/* Monthly Patterns */
+"monthly.pattern.title" = "Repeat on";
+"monthly.pattern.times" = "X times per month";
+"monthly.pattern.day" = "Specific day";
+"monthly.pattern.weekday" = "Day of week";
+"monthly.day.select" = "Select day of month";
+"monthly.day.format" = "Every %@";
+"monthly.lastday" = "Last day of month";
+"monthly.lastday.short" = "Last";
+"monthly.weeknumber" = "Which week";
+"monthly.weekday" = "Which day";
+"monthly.summary" = "%@ %@ of each month";
+
+/* Week Numbers */
+"weeknumber.first" = "First";
+"weeknumber.second" = "Second";
+"weeknumber.third" = "Third";
+"weeknumber.fourth" = "Fourth";
+"weeknumber.last" = "Last";
+
 /* Weekdays */
 "weekday.sun.short" = "Sun";
 "weekday.mon.short" = "Mon";
@@ -87,6 +108,12 @@
 "info.created" = "Created";
 "info.effort" = "Effort";
 "info.urgency" = "Urgency weight";
+"info.urgency.footer" = "Higher urgency makes the task appear closer to the top";
+"info.urgency.overdue.hours" = "Task is overdue";
+"info.urgency.overdue.days" = "Task is %d day(s) overdue";
+"info.urgency.due.today" = "Due within 24 hours";
+"info.urgency.due.soon" = "Due within 3 days";
+"info.urgency.age" = "Task has been pending for %d day(s)";
 
 /* Completed Tasks */
 "completed.title" = "Completed Tasks";
@@ -126,3 +153,24 @@
 "notification.no.tasks" = "All clear! No tasks for today.";
 "notification.tasks.list" = "You have %d %@:";
 "notification.tasks.more" = "...and %d more";
+
+/* One-off Task */
+"task.oneoff" = "One off task";
+"task.specifictime" = "Set specific time";
+"task.time" = "Time";
+
+/* Stats */
+"completed.stats.avg" = "Avg: %@";
+
+/* About/Legal */
+"settings.privacy" = "Privacy Policy";
+"settings.terms" = "Terms of Service";
+"settings.support" = "Support";
+
+/* Accessibility */
+"accessibility.add.task" = "Add new task";
+"accessibility.bubble" = "%@, priority %@, takes %@";
+"accessibility.bubble.hint" = "Tap to complete, hold to edit";
+"accessibility.priority.indicator" = "Priority %d of 5";
+"accessibility.effort.button" = "%@, tap to select";
+"accessibility.weekday.button" = "%@, %@";

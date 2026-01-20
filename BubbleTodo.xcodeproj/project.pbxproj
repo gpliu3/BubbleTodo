@@ -92,6 +92,20 @@
 				en,
 				Base,
 				"zh-Hans",
+				ja,
+				ko,
+				es,
+				de,
+				fr,
+				"pt-BR",
+				"zh-Hant",
+				"de 2",
+				"es 2",
+				"fr 2",
+				"ja 2",
+				"ko 2",
+				"pt-BR 2",
+				"zh-Hant 2",
 			);
 			mainGroup = FFB8267F2F1CBB1D006B0239;
 			minimizedProjectReferenceProxies = 1;

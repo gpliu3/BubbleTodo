@@ -7,6 +7,7 @@ import Foundation
 import UserNotifications
 import SwiftData
 import Combine
+import os.log
 
 @MainActor
 class NotificationManager: ObservableObject {
@@ -93,7 +94,7 @@ class NotificationManager: ObservableObject {
                 await scheduleAllNotifications()
             }
         } catch {
-            print("Failed to request notification authorization: \(error)")
+            os_log(.error, "Failed to request notification authorization: %@", error.localizedDescription)
         }
     }
 

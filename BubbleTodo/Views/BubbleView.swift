@@ -13,23 +13,36 @@ struct BubbleView: View {
     @State private var isPopping = false
     @State private var bobOffset: CGFloat = 0
 
-    // Calculate bubble diameter based on task's bubble size (effort-only, sqrt-scaled)
-    // 1min → ~60pt, 5min → ~80pt, 15min → ~107pt, 30min → ~135pt, 60min → ~155pt, 120min → ~180pt
-    private var diameter: CGFloat {
+    // Pre-computed values for better performance
+    private let diameter: CGFloat
+    private let bubbleColor: Color
+
+    // Shared haptic feedback generator (prepared once)
+    private static let longPressHaptic: UIImpactFeedbackGenerator = {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        return generator
+    }()
+
+    init(task: TaskItem, onTap: @escaping () -> Void, onLongPress: @escaping () -> Void) {
+        self.task = task
+        self.onTap = onTap
+        self.onLongPress = onLongPress
+
+        // Pre-compute diameter
         let baseSize: CGFloat = 50
         let scaleFactor: CGFloat = 11.5
         let size = baseSize + CGFloat(task.bubbleSize) * scaleFactor
-        return min(max(size, 60), 180)
-    }
+        self.diameter = min(max(size, 60), 180)
 
-    private var bubbleColor: Color {
+        // Pre-compute color
         switch task.priority {
-        case 1: return .green
-        case 2: return .yellow
-        case 3: return .orange
-        case 4: return .red
-        case 5: return .purple
-        default: return .orange
+        case 1: self.bubbleColor = .green
+        case 2: self.bubbleColor = .yellow
+        case 3: self.bubbleColor = .orange
+        case 4: self.bubbleColor = .red
+        case 5: self.bubbleColor = .purple
+        default: self.bubbleColor = .orange
         }
     }
 
@@ -105,10 +118,14 @@ struct BubbleView: View {
             pop()
         }
         .onLongPressGesture(minimumDuration: 0.5) {
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.impactOccurred()
+            Self.longPressHaptic.impactOccurred()
+            Self.longPressHaptic.prepare() // Prepare for next use
             onLongPress()
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(format: L("accessibility.bubble"), task.title, task.priorityLabel, task.effortLabel))
+        .accessibilityHint(L("accessibility.bubble.hint"))
+        .accessibilityAddTraits(.isButton)
     }
 
     private func startBobbing() {
